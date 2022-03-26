@@ -1,0 +1,3 @@
+[submodule "secure-computation-library"]
+	path = secure-computation-library
+	url = https://github.com/deescuderoo/secure-computation-library
