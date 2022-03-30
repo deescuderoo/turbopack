@@ -8,15 +8,16 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -pedantic -
 
 set(TEST_EXECUTABLE "tests.x")
 
-set(FP_SOURCE_FILES
+set(TP_SOURCE_FILES
+  src/tp/circuits.cc
   src/tp/gate.cc
-  src/tp/mult.cc
 )
 
 set(TEST_SOURCE_FILES
   test/main.cc
-  test/test_mult.cc
-  test/test_gate.cc
+
+  test/test_circuit.cc
+  test/test_gates.cc
 )
 
 
@@ -25,7 +26,7 @@ include( CTest )
 include( Catch )
 
 # add_subdirectory( secure-computation-library )
-add_executable( ${TEST_EXECUTABLE} ${FP_SOURCE_FILES} ${TEST_SOURCE_FILES} )
+add_executable( ${TEST_EXECUTABLE} ${TP_SOURCE_FILES} ${TEST_SOURCE_FILES} )
 target_include_directories(${TEST_EXECUTABLE} PUBLIC
   "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
   "${CMAKE_SOURCE_DIR}/src")

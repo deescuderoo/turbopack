@@ -10,7 +10,10 @@ namespace tp {
 
   class Gate {
   public:
-    FF getShrLambda() { return mIndvShrLambdaC; };
+
+    // Individual share of the mask (lambda...lambda) associated to
+    // the output of this gate.
+    FF GetShrLambda() { return mIndvShrLambdaC; };
 
     // Intended to be called by P1
     virtual FF GetMu() = 0;
@@ -18,8 +21,12 @@ namespace tp {
     // Intended to be called by P1
     bool IsLearned() { return mLearned; };
 
+    // For cleartext evaluation
+    bool IsEvaluated() { return mEvaluated; };
 
-    // For testing purposes
+
+    // Get the cleartext value associated to the output of this gate,
+    // if computed already (cleartext evaluation)
     virtual FF GetClear() = 0;
 
     std::shared_ptr<Gate> GetLeft() { return mLeft; }
@@ -30,7 +37,7 @@ namespace tp {
     bool mLearned = false;
 
     // Sharing of (lambda ... lambda)
-    FF mIndvShrLambdaC;
+    FF mIndvShrLambdaC = FF(0);
 
     // mu = value - lambda
     // Learned by P1 in the online phase
@@ -39,6 +46,12 @@ namespace tp {
     // Parents
     std::shared_ptr<Gate> mLeft;
     std::shared_ptr<Gate> mRight;
+
+    // For cleartext evaluation
+    // Bool that indicates whether the gate has been evaluated
+    bool mEvaluated = false;
+    // Evaluation of the output wire of the gate
+    FF mClear;
 
     friend class MultBatch;
   };  
@@ -50,10 +63,20 @@ namespace tp {
       mIndvShrLambdaC = FF(0);
     };
 
+    // Set cleartext inputs, for the case of cleartext evaluation
     void ClearInput(FF input) {
+      mClear = input;
+      mEvaluated = true;
+    };
+
+    // For testing purposes. Sets the input to the given
+    // value. Assumes the associated mask is 0, and P1 learns the
+    // "masked" value.
+    void _SetDummyInput(FF input) {
       mMu = input;
       mLearned = true;
     };
+
 
     FF GetMu() {
       if ( !mLearned )
@@ -62,9 +85,9 @@ namespace tp {
     };
     
     FF GetClear() {
-      if ( !mLearned )
-	throw std::invalid_argument("P1 hasn't learned this value yet");
-      return mMu;
+      if ( !mEvaluated )
+	throw std::invalid_argument("This input has not been provided yet");
+      return mClear;
     };
 
     // Protocol-related
@@ -107,7 +130,6 @@ namespace tp {
       mRight = nullptr;
     };
 
-    // TODO replace
     FF GetMu() {
       if ( !mLearned ) {
 	mMu = mLeft->GetMu();
@@ -117,12 +139,14 @@ namespace tp {
     };
 
     FF GetClear() {
-      if ( !mLearned ) {
-	mMu = mLeft->GetMu();
-	mLearned = true;
+      if ( !mEvaluated ) {
+	mClear = mLeft->GetClear();
+	mEvaluated = true;
       }
-      return mMu;
+      return mClear;
     };
+
+    // TODO output protocol
     
   };
 
@@ -132,7 +156,7 @@ namespace tp {
     AddGate(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
       mLeft = left;
       mRight = right;
-      mIndvShrLambdaC = left->getShrLambda() + right->getShrLambda();
+      mIndvShrLambdaC = left->GetShrLambda() + right->GetShrLambda();
     };
 
     FF GetMu() {
@@ -144,11 +168,11 @@ namespace tp {
     };
 
     FF GetClear() {
-      if ( !mLearned ) {
-	mMu = mLeft->GetMu() + mRight->GetMu();
-	mLearned = true;
+      if ( !mEvaluated ) {
+	mClear = mLeft->GetClear() + mRight->GetClear();
+	mEvaluated = true;
       }
-      return mMu;
+      return mClear;
     };
 
   };
@@ -171,11 +195,11 @@ namespace tp {
     };
 
     FF GetClear() {
-      if ( !mLearned ) {
-	mMu = mLeft->GetMu() * mRight->GetMu();
-	mLearned = true;
+      if ( !mEvaluated ) {
+	mClear = mLeft->GetClear() * mRight->GetClear();
+	mEvaluated = true;
       }
-      return mMu;
+      return mClear;
     };
   private:
   };
@@ -201,12 +225,16 @@ namespace tp {
       mMultGatesPtrs.reserve(mBatchSize);
     };
 
+    // Adds a new mult_gate to the batch. It cannot add more gates than
+    // the batch_size
     void Append(std::shared_ptr<MultGate> mult_gate) {
       if ( mMultGatesPtrs.size() == mBatchSize )
 	throw std::invalid_argument("Trying to batch more than batch_size gates");
       mMultGatesPtrs.emplace_back(mult_gate); };
 
-    void DummyPrep() {
+    // For testing purposes: sets the required preprocessing for this
+    // batch to be just 0 shares
+    void _DummyPrep() {
       if ( mMultGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of mult gates does not match the batch size");
 
@@ -216,20 +244,30 @@ namespace tp {
       mPackedShrLambdaAB = FF(0);
     };
 
+    // For cleartext evaluation: calls GetClear on all its gates to
+    // populate their mClear. This could return a vector with these
+    // values but we're not needing them
     void GetClear() {
       for (auto gate : mMultGatesPtrs) { gate->GetClear(); }
     }
 
+    // Determines whether the batch is full
     bool HasRoom() { return mMultGatesPtrs.size() < mBatchSize; }
-
+    
+    // For fetching mult gates
     std::shared_ptr<MultGate> GetMultGate(std::size_t idx) { return mMultGatesPtrs[idx]; }
 
+    // Set network parameters for evaluating the protocol. This is not
+    // part of the creation of the batch since sometimes we just want
+    // to evaluate in the clear and this won't be needed
     void SetNetwork(scl::Network& network, std::size_t id) {
       mNetwork = network;
       mID = id;
       mParties = network.Size();
     }
-    
+
+    // First step of the protocol where P1 sends the packed shares of
+    // the mu of the inputs
     void P1Sends() {
       if ( mID == 0 ) {
 
@@ -260,6 +298,8 @@ namespace tp {
       }
     }
 
+    // The parties receive the packed shares of the mu's and store
+    // them
     void PartiesReceive() {
       FF shr_mu_A;
       FF shr_mu_B;
@@ -270,7 +310,9 @@ namespace tp {
       mPackedShrMuA = shr_mu_A;
       mPackedShrMuB = shr_mu_B;
     }
-      
+
+    // The parties compute locally the necessary Beaver linear
+    // combination and send the resulting share back to P1
     void PartiesSend() {
       // Compute share
       FF shr_mu_C;
@@ -281,6 +323,8 @@ namespace tp {
       mNetwork.Party(0)->Send(shr_mu_C); 
     }
 
+    // P1 receives the shares from the parties, reconstructs the mu
+    // of the outputs in the batch, and updates these accordingly
     void P1Receives() {
       if (mID == 0) {
 	Vec mu_gamma;
@@ -325,6 +369,7 @@ namespace tp {
 
   };
 
+  // Basically a collection of batches
   class Layer {
   public:
     Layer(std::size_t batch_size) : mBatchSize(batch_size) {
@@ -333,6 +378,8 @@ namespace tp {
       mBatches.emplace_back(first_batch);
     };
 
+    // Adds a new mult_gate to the layer. It checks if the current
+    // batch is full and if so creates a new one.
     void Append(std::shared_ptr<MultGate> mult_gate) {
       auto current_batch = mBatches.back(); // accessing last elt
       if ( current_batch->HasRoom() ) {
@@ -346,7 +393,7 @@ namespace tp {
 
     std::shared_ptr<MultBatch> GetMultBatch(std::size_t idx) { return mBatches[idx]; }
 
-    // Pads and closes the layer
+    // Pads the current batch if necessary
     void Close() {
       auto padding_gate = std::make_shared<PaddingGate>();
       padding_gate->UpdateParents(padding_gate, padding_gate);
@@ -359,14 +406,16 @@ namespace tp {
       while ( last_batch->HasRoom() ) {
 	last_batch->Append(padding_gate);
       } 
-      assert(last_batch->HasRoom() == false);
+      // assert(last_batch->HasRoom() == false); // PASSES
     }
 
-    void DummyPrep() {
-      for (auto batch : mBatches) batch->DummyPrep();
+    // For testing purposes: sets the required preprocessing for each
+    // batch to be just 0 shares
+    void _DummyPrep() {
+      for (auto batch : mBatches) batch->_DummyPrep();
     }
 
-    void GetClear() {
+    void ClearEvaluation() {
       for (auto batch : mBatches) batch->GetClear();
     }
 
