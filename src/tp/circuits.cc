@@ -18,7 +18,7 @@ namespace tp {
     if ( config.n_outputs > config.width )
       throw std::invalid_argument("More output gates than width");
 
-    Circuit circuit(config.batch_size);
+    Circuit circuit(config.n_parties, config.batch_size);
 
     // ASSEMBLE CIRCUIT
 

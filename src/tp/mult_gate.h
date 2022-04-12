@@ -42,6 +42,8 @@ namespace tp {
 
     FF GetMu() override { return FF(0); }
 
+    // Just a technicality needed to make the parents of this gate be
+    // itself when instantiated
     void UpdateParents(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
       mLeft = left;
       mRight = right;
@@ -99,81 +101,19 @@ namespace tp {
 
     // First step of the protocol where P1 sends the packed shares of
     // the mu of the inputs
-    void P1Sends() {
-      if ( mID == 0 ) {
-
-	// 1. P1 assembles mu_A and mu_B
-
-	Vec mu_alpha;
-	Vec mu_beta;
-	// Here is where the permutation happens!
-	for (auto gate : mMultGatesPtrs) {
-	  mu_alpha.Emplace(gate->GetLeft()->GetMu());
-	  mu_beta.Emplace(gate->GetRight()->GetMu());
-	}
-      
-	// 2. P1 generates shares of mu_A and mu_B
-      
-	auto poly_A = scl::details::EvPolyFromSecretsAndDegree(mu_alpha, mBatchSize-1, mPRG);
-	Vec shares_A = scl::details::SharesFromEvPoly(poly_A, mParties);
-
-	auto poly_B = scl::details::EvPolyFromSecretsAndDegree(mu_beta, mBatchSize-1, mPRG);
-	Vec shares_B = scl::details::SharesFromEvPoly(poly_B, mParties);
-
-	// 3. P1 sends the shares
-
-	for (std::size_t i = 0; i < mParties; ++i) {
-	  mNetwork.Party(i)->Send(shares_A[i]);
-	  mNetwork.Party(i)->Send(shares_B[i]);
-	}
-      }
-    }
+    void P1Sends();
 
     // The parties receive the packed shares of the mu's and store
     // them
-    void PartiesReceive() {
-      FF shr_mu_A;
-      FF shr_mu_B;
-
-      mNetwork.Party(0)->Recv(shr_mu_A);
-      mNetwork.Party(0)->Recv(shr_mu_B);
-
-      mPackedShrMuA = shr_mu_A;
-      mPackedShrMuB = shr_mu_B;
-    }
+    void PartiesReceive();
 
     // The parties compute locally the necessary Beaver linear
     // combination and send the resulting share back to P1
-    void PartiesSend() {
-      // Compute share
-      FF shr_mu_C;
-      shr_mu_C = mPackedShrMuB * mPackedShrLambdaA + mPackedShrMuA * mPackedShrLambdaB + \
-	mPackedShrMuA * mPackedShrMuB + mPackedShrLambdaAB - mPackedShrLambdaC;
-
-      // Send to P1
-      mNetwork.Party(0)->Send(shr_mu_C); 
-    }
+    void PartiesSend();
 
     // P1 receives the shares from the parties, reconstructs the mu
     // of the outputs in the batch, and updates these accordingly
-    void P1Receives() {
-      if (mID == 0) {
-	Vec mu_gamma;
-	Vec shares;
-	for (std::size_t i = 0; i < mParties; ++i) {
-	  FF shr_mu_C;
-	  mNetwork.Party(i)->Recv(shr_mu_C);
-	  shares.Emplace(shr_mu_C);
-	}
-	mu_gamma = scl::details::SecretsFromSharesAndLength(shares, mBatchSize);
-
-	// P1 updates the mu for the gates in the current batch
-	for (std::size_t i = 0; i < mBatchSize; i++) {
-	  mMultGatesPtrs[i]->mMu = mu_gamma[i];
-	  mMultGatesPtrs[i]->mLearned = true;
-	}
-      }
-    }
+    void P1Receives();
 
   private:
     std::size_t mBatchSize;
@@ -201,9 +141,9 @@ namespace tp {
   };
 
   // Basically a collection of batches
-  class Layer {
+  class MultLayer {
   public:
-    Layer(std::size_t batch_size) : mBatchSize(batch_size) {
+    MultLayer(std::size_t batch_size) : mBatchSize(batch_size) {
       auto first_batch = std::make_shared<MultBatch>(mBatchSize);
       // Append a first batch
       mBatches.emplace_back(first_batch);

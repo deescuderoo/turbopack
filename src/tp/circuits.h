@@ -38,25 +38,41 @@ namespace tp {
 
   class Circuit {
   public:
-    Circuit(std::size_t batch_size) : mBatchSize(batch_size) {
-      auto first_layer = Layer(mBatchSize);
-      mLayers.emplace_back(first_layer);
-
-      mFlatLayers.emplace_back(VecMultGates());
+    void Init(std::size_t n_clients, std::size_t batch_size) {
+      // Initialize input layer
+      mInputLayers.reserve(n_clients);
+      mFlatInputGates.resize(n_clients);
+      for (std::size_t i = 0; i < n_clients; i++) {
+	auto input_layer = InputLayer(i, batch_size);
+	mInputLayers.emplace_back(input_layer);
+      }
+      
+      // Initialize first mult layer
+      auto first_layer = MultLayer(mBatchSize);
+      mMultLayers.emplace_back(first_layer);
+      mFlatMultLayers.emplace_back(VecMultGates());
     }
 
-    Circuit() : mBatchSize(1) {
-      auto first_layer = Layer(mBatchSize);
-      mLayers.emplace_back(first_layer);
+    Circuit(std::size_t n_clients, std::size_t batch_size) : mBatchSize(batch_size), mClients(n_clients) {
+      Init(n_clients, batch_size);
+    }
 
-      mFlatLayers.emplace_back(VecMultGates());
+    Circuit() : mBatchSize(1), mClients(1) {
+      Init(mClients, mBatchSize);
       }
 
     // Append input gates
     std::shared_ptr<InputGate> Input(std::size_t owner_id) {
       auto ptr = std::make_shared<tp::InputGate>(owner_id);
+      mInputLayers[owner_id].Append(ptr);
+      mFlatInputGates[owner_id].emplace_back(ptr);
       mInputGates.emplace_back(ptr);
       return ptr;
+    }
+
+    // Consolidates the batches for the inputs
+    void CloseInputs() {
+      for (auto input_layer : mInputLayers) input_layer.Close();
     }
 
     // Append output gates
@@ -75,8 +91,8 @@ namespace tp {
     // layer, which in turns add them to the current batch within that layer.
     std::shared_ptr<MultGate> Mult(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
       auto mult_gate = std::make_shared<tp::MultGate>(left, right);
-      mLayers.back().Append(mult_gate);
-      mFlatLayers.back().emplace_back(mult_gate);
+      mMultLayers.back().Append(mult_gate);
+      mFlatMultLayers.back().emplace_back(mult_gate);
       mSize++;
       return mult_gate;
     }
@@ -87,51 +103,78 @@ namespace tp {
     // are appended if necessary to reach a full batch 
     void NewLayer() {
       // Update width
-      if (mWidth < mFlatLayers.back().size()) mWidth = mFlatLayers.back().size();
-      mFlatLayers.emplace_back(VecMultGates());
+      if (mWidth < mFlatMultLayers.back().size()) mWidth = mFlatMultLayers.back().size();
+      mFlatMultLayers.emplace_back(VecMultGates());
       
       // Pad the batches if necessary
-      mLayers.back().Close();
+      mMultLayers.back().Close();
       // Open space for the next layer
-      auto next_layer = Layer(mBatchSize);
-      mLayers.emplace_back(next_layer);
+      auto next_layer = MultLayer(mBatchSize);
+      mMultLayers.emplace_back(next_layer);
     }
 
     // Closes the current layer and does not open a new one. 
     void LastLayer() {
       // Update width
-      if (mWidth < mFlatLayers.back().size()) mWidth = mFlatLayers.back().size();
-      mFlatLayers.emplace_back(VecMultGates());
+      if (mWidth < mFlatMultLayers.back().size()) mWidth = mFlatMultLayers.back().size();
+      mFlatMultLayers.emplace_back(VecMultGates());
 
-      mLayers.back().Close();
+      mMultLayers.back().Close();
     }
 
     // Populates each batch with dummy preprocessing (all zeros)
     void DummyPrep() {
-      for (auto layer : mLayers) layer._DummyPrep();
+      for (auto layer : mMultLayers) layer._DummyPrep();
     }
 
     // Used to fetch input and output gates
+    std::shared_ptr<InputGate> GetInputGate(std::size_t owner_id, std::size_t idx) { return mFlatInputGates[owner_id][idx]; }
     std::shared_ptr<InputGate> GetInputGate(std::size_t idx) { return mInputGates[idx]; }
     std::shared_ptr<OutputGate> GetOutputGate(std::size_t idx) { return mOutputGates[idx]; }
 
     // Used to fetch the idx-th mult gate of the desired layer
     std::shared_ptr<MultGate> GetMultGate(std::size_t layer, std::size_t idx) {
-      auto out = mFlatLayers[layer][idx];
+      auto out = mFlatMultLayers[layer][idx];
       // auto out2 = mLayers[layer].GetMultBatch(idx/mBatchSize)->GetMultGate(idx % mBatchSize);
       // assert(mLayers[layer].GetMultBatch(idx/mBatchSize)->GetMultGate(idx % mBatchSize) == out); // PASSES
       return out;
     }
 
     // Evaluates the circuit in the clear on the given inputs
-    std::vector<FF> ClearEvaluation(std::vector<FF> inputs) {
+    std::vector<FF> ClearEvaluation(std::vector<std::vector<FF>> inputs_per_client) {
       // 1. Set inputs
-      if ( inputs.size() != mInputGates.size() )
-	throw std::invalid_argument("Number of inputs provided does not match number of input gates");
-      for (std::size_t i = 0; i < inputs.size(); i++) mInputGates[i]->ClearInput(inputs[i]);
+      if ( inputs_per_client.size() != mClients )
+	throw std::invalid_argument("Number of clients do not match");
+
+      for (std::size_t i = 0; i < mClients; i++) {
+	if ( inputs_per_client[i].size() != mFlatInputGates[i].size() )
+	  throw std::invalid_argument("Number of inputs provided for a client does not match its number of input gates");
+	for (std::size_t j = 0; j < inputs_per_client.size(); j++) mFlatInputGates[i][j]->ClearInput(inputs_per_client[i][j]);
+      }
 
       // 2. Evaluate last layer, which evaluates all others
-      mLayers.back().ClearEvaluation();
+      mMultLayers.back().ClearEvaluation();
+
+      // 3. Evaluate output gates
+      std::vector<FF> output;
+      for (auto output_gate : mOutputGates) output.emplace_back(output_gate->GetClear());
+      return output;
+    }
+
+    // Evaluations given vector of inputs. These get spread out for all parties.
+    // It is NOT checked if there are enough inputs. May segfault
+    std::vector<FF> ClearEvaluation(std::vector<FF> inputs) {
+      // 1. Set inputs
+      std::size_t idx(0);
+      for (std::size_t i = 0; i < mClients; i++) {
+	for (auto input_gate : mFlatInputGates[i]) {
+	  input_gate->ClearInput(inputs[idx]);
+	  idx++;
+	}
+      }
+
+      // 2. Evaluate last layer, which evaluates all others
+      mMultLayers.back().ClearEvaluation();
 
       // 3. Evaluate output gates
       std::vector<FF> output;
@@ -143,7 +186,7 @@ namespace tp {
     static Circuit FromConfig(CircuitConfig config);
 
     // Fetch metrics
-    std::size_t GetDepth() { return mLayers.size(); }
+    std::size_t GetDepth() { return mMultLayers.size(); }
     std::size_t GetNInputs() { return mInputGates.size(); }
     std::size_t GetNOutputs() { return mOutputGates.size(); }
     std::size_t GetWidth() { return mWidth; }
@@ -153,17 +196,21 @@ namespace tp {
     std::size_t mBatchSize;
 
     // List of layers. Each layer is itself a list of batches, which
-    // is itself a list of batch_size multiplications
-    std::vector<Layer> mLayers;
-    // List of layers where each layer contains the multiplications
+    // is itself a list of batch_size gates
+    std::vector<InputLayer> mInputLayers; // indexes represent parties
+    std::vector<MultLayer> mMultLayers; // indexes represent layers
+    
+    // List of layers where each layer contains the gates
     // themselves, not the batches
-    std::vector<std::vector<std::shared_ptr<MultGate>>> mFlatLayers;
+    std::vector<std::vector<std::shared_ptr<MultGate>>> mFlatMultLayers; // Outer idx: layer
+    std::vector<std::vector<std::shared_ptr<InputGate>>> mFlatInputGates; // Outer idx: client
 
     // Lists with input and output gates
     std::vector<std::shared_ptr<InputGate>> mInputGates;
     std::vector<std::shared_ptr<OutputGate>> mOutputGates;
 
     // Metrics
+    std::size_t mClients; // number of clients
     std::size_t mWidth=0;
     std::size_t mSize=0; // number of multiplications
   };

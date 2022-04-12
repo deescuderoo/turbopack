@@ -16,6 +16,8 @@ TEST_CASE("Circuits") {
     auto y = c.Input(0);
     auto u = c.Input(0);
     auto v = c.Input(0);
+
+    c.CloseInputs();
     
     auto xPy = c.Add(x, y);
     auto uPv = c.Add(u, v);
@@ -52,7 +54,6 @@ TEST_CASE("Circuits") {
 
     // Testing GetClear()
     std::vector<tp::FF> inputs{X, Y, U, V};
-    
     auto result = c.ClearEvaluation(inputs)[0];
 
     // Check that the call above populates upper gates
