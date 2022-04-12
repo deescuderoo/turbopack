@@ -16,15 +16,14 @@ set(TP_SOURCE_FILES
   src/tp/input_gate.cc
   src/tp/output_gate.cc
 
-
+  src/tp/fd_prep.cc
 )
 
 set(TEST_SOURCE_FILES
   test/main.cc
 
   test/test_circuit.cc
-  test/test_gates.cc
-  test/test_fd_prep.cc
+  test/test_mult.cc
 )
 
 

@@ -106,7 +106,7 @@ TEST_CASE("Gates") {
     // This works because the lambda masks are all zero
     for (std::size_t i = 0; i < n_parties; i++) {
       REQUIRE( X == x_gates[i]->GetMu() );
-      REQUIRE( Y== y_gates[i]->GetMu() );
+      REQUIRE( Y == y_gates[i]->GetMu() );
     }   
 
     std::vector<std::shared_ptr<tp::MultGate>> z_gates;

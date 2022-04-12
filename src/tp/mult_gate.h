@@ -190,11 +190,26 @@ namespace tp {
       for (auto batch : mBatches) batch->GetClear();
     }
 
-    // Intended to be run one after the other
-    void P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
-    void PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
-    void PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
-    void P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
+    // Set network parameters for evaluating the protocol. This is not
+    // part of the creation of the layer since sometimes we just want
+    // to evaluate in the clear and this won't be needed
+    // To be used after the layer is closed
+    void SetNetwork(scl::Network& network, std::size_t id) {
+      for (auto batch : mBatches) batch->SetNetwork(network, id);
+    }
+
+    void RunProtocol() {
+      for (auto batch : mBatches) batch->P1Sends();
+      for (auto batch : mBatches) batch->PartiesReceive(); 
+      for (auto batch : mBatches) batch->PartiesSend(); 
+      for (auto batch : mBatches) batch->P1Receives(); 
+    }
+
+    // For testing purposes, to avoid blocking
+    void _P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
+    void _PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
+    void _PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
+    void _P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
 
   private:
     vec<std::shared_ptr<MultBatch>> mBatches;
