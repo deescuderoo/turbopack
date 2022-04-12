@@ -10,7 +10,7 @@
 namespace tp {
   class MultGate : public Gate {
   public:
-    MultGate() {};
+    MultGate() {}; // for the padding gates below
     MultGate(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
       mLeft = left;
       mRight = right;
