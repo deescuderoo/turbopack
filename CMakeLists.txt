@@ -10,7 +10,13 @@ set(TEST_EXECUTABLE "tests.x")
 
 set(TP_SOURCE_FILES
   src/tp/circuits.cc
+
   src/tp/gate.cc
+  src/tp/mult_gate.cc
+  src/tp/input_gate.cc
+  src/tp/output_gate.cc
+
+
 )
 
 set(TEST_SOURCE_FILES
@@ -18,6 +24,7 @@ set(TEST_SOURCE_FILES
 
   test/test_circuit.cc
   test/test_gates.cc
+  test/test_fd_prep.cc
 )
 
 

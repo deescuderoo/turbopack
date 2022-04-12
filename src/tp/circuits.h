@@ -5,7 +5,9 @@
 #include <iostream>
 #include <assert.h>
 
-#include "tp/gate.h"
+#include "tp/mult_gate.h"
+#include "tp/input_gate.h"
+#include "tp/output_gate.h"
 
 using VecMultGates = std::vector<std::shared_ptr<tp::MultGate>>;
 
@@ -13,6 +15,7 @@ namespace tp {
 
   struct CircuitConfig {
     std::vector<std::size_t> inp_gates;
+    std::vector<std::size_t> out_gates;
     std::size_t n_parties;
     std::size_t width;
     std::size_t depth;
@@ -22,6 +25,12 @@ namespace tp {
     std::size_t ComputeNumberOfInputs() {
       std::size_t sum(0);
       for (auto n_inputs : inp_gates)
+	sum += n_inputs;
+      return sum;
+    }
+    std::size_t ComputeNumberOfOutputs() {
+      std::size_t sum(0);
+      for (auto n_inputs : out_gates)
 	sum += n_inputs;
       return sum;
     }
