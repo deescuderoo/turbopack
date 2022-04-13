@@ -34,6 +34,14 @@ namespace tp {
       return mMu;
     }
 
+    FF GetDummyLambda() {
+      if ( !mLambdaSet ) {
+	mLambda = mLeft->GetDummyLambda();
+	mLambdaSet = true;
+      }
+      return mLambda;
+    }    
+
     FF GetClear() {
       if ( !mEvaluated ) {
 	mClear = mLeft->GetClear();
@@ -96,6 +104,7 @@ namespace tp {
     PadOutputGate(std::size_t owner_id) : OutputGate(owner_id) {};
 
     FF GetMu() override { return FF(0); }
+    FF GetDummyLambda() override { return FF(0); }
 
     void UpdateParent(std::shared_ptr<Gate> left) {
       mLeft = left;
@@ -118,7 +127,7 @@ namespace tp {
       mOutputGatesPtrs.emplace_back(output_gate); }
 
     // For testing purposes: sets the required preprocessing for this
-    // batch to be just 0 shares
+    // batch to be constant shares
     void _DummyPrep(FF lambda) {
       if ( mOutputGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of output gates does not match the batch size");
@@ -128,6 +137,20 @@ namespace tp {
     }
     void _DummyPrep() {
       _DummyPrep(FF(0));
+    }
+
+    // Generates the preprocessing from the lambdas of the inputs
+    void PrepFromDummyLambdas() {
+      Vec lambda;
+
+      for (std::size_t i = 0; i < mBatchSize; i++) {
+	lambda.Emplace(mOutputGatesPtrs[i]->GetDummyLambda());
+      }
+      // Using deg = BatchSize-1 ensures there's no randomness involved
+      auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda, mBatchSize-1, mPRG);
+      Vec shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+      mPackedShrLambda = shares[mID];	
     }
 
     // For cleartext evaluation: calls GetClear on all its gates to
@@ -168,6 +191,8 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    scl::PRG mPRG;
   };
 
   // Basically a collection of batches
@@ -214,6 +239,9 @@ namespace tp {
     }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
+    }
+    void PrepFromDummyLambdas() {
+      for (auto batch : mBatches) batch->PrepFromDummyLambdas();
     }
 
     void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {

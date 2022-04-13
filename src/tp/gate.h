@@ -22,16 +22,17 @@ namespace tp {
     bool IsLearned() { return mLearned; };
 
     // For cleartext evaluation
-    bool IsEvaluated() { return mEvaluated; };
+    bool IsEvaluated() { return mEvaluated; }
 
-    // For testing purposes. Sets the input to the given
-    // value. Assumes the associated mask is 0, and P1 learns the
-    // "masked" value.
-    void _SetDummyMu(FF input) {
-      mMu = input;
+    // For testing purposes. Sets mu to the given value
+    void _SetDummyMu(FF mu) {
+      mMu = mu;
       mLearned = true;
-    };
+    }
 
+    // To get lambda when having fake preprocessing
+    virtual FF GetDummyLambda() = 0; 
+    
     // Get the cleartext value associated to the output of this gate,
     // if computed already (cleartext evaluation)
     virtual FF GetClear() = 0;
@@ -49,6 +50,10 @@ namespace tp {
     // mu = value - lambda
     // Learned by P1 in the online phase
     FF mMu;
+
+    // Actual lambda. Used for debugging purposes
+    FF mLambda;
+    bool mLambdaSet = false;
 
     // Parents
     std::shared_ptr<Gate> mLeft;
@@ -69,7 +74,7 @@ namespace tp {
       mLeft = left;
       mRight = right;
       mIndvShrLambdaC = left->GetShrLambda() + right->GetShrLambda();
-    };
+    }
 
     FF GetMu() {
       if ( !mLearned ) {
@@ -77,7 +82,7 @@ namespace tp {
 	mLearned = true;
       }
       return mMu;
-    };
+    }
 
     FF GetClear() {
       if ( !mEvaluated ) {
@@ -85,8 +90,15 @@ namespace tp {
 	mEvaluated = true;
       }
       return mClear;
-    };
+    }
 
+    FF GetDummyLambda() {
+      if ( !mLambdaSet ) {
+	mLambda = mLeft->GetDummyLambda() + mRight->GetDummyLambda();
+	mLambdaSet = true;
+      }
+      return mLambda;
+    }    
   };
 } // namespace tp
 

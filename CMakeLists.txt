@@ -15,8 +15,6 @@ set(TP_SOURCE_FILES
   src/tp/output_gate.cc
 
   src/tp/circuits.cc
-
-  src/tp/fd_prep.cc
 )
 
 set(TEST_SOURCE_FILES

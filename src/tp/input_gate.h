@@ -30,6 +30,17 @@ namespace tp {
 	throw std::invalid_argument("P1 hasn't learned this value yet");
       return mMu;
     };
+
+    void SetDummyLambda(FF lambda) {
+      mLambda = lambda;
+      mLambdaSet = true;
+    };
+
+    FF GetDummyLambda() {
+      if ( !mLambdaSet )
+	throw std::invalid_argument("Lambda is not set in this input gate");
+      return mLambda;
+    };
     
     FF GetClear() {
       if ( !mEvaluated )
@@ -86,6 +97,7 @@ namespace tp {
     PadInputGate(std::size_t owner_id) : InputGate(owner_id) {};
 
     FF GetMu() override { return FF(0); }
+    FF GetDummyLambda() override { return FF(0); }
 
   private:
   };
@@ -106,7 +118,7 @@ namespace tp {
       mInputGatesPtrs.emplace_back(input_gate); }
 
     // For testing purposes: sets the required preprocessing for this
-    // batch to be just 0 shares
+    // batch to be constant shares
     void _DummyPrep(FF lambda) {
       if ( mInputGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of input gates does not match the batch size");
@@ -118,6 +130,21 @@ namespace tp {
       _DummyPrep(FF(0));
     }
                                             
+    // Generates the preprocessing from the lambdas of the inputs
+    void PrepFromDummyLambdas() {
+      Vec lambda;
+
+      for (std::size_t i = 0; i < mBatchSize; i++) {
+	lambda.Emplace(mInputGatesPtrs[i]->GetDummyLambda());
+      }
+      // Using deg = BatchSize-1 ensures there's no randomness involved
+      auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda, mBatchSize-1, mPRG);
+      Vec shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+      mPackedShrLambda = shares[mID];
+    }
+
+
     // For cleartext evaluation: calls GetClear on all its gates to
     // populate their mClear. This could return a vector with these
     // values but we're not needing them
@@ -158,6 +185,8 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    scl::PRG mPRG;
   };
 
   // Basically a collection of batches
@@ -203,6 +232,9 @@ namespace tp {
     }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
+    }
+    void PrepFromDummyLambdas() {
+      for (auto batch : mBatches) batch->PrepFromDummyLambdas();
     }
 
     void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {

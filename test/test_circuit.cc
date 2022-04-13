@@ -94,7 +94,7 @@ TEST_CASE("Cleartext") {
       config.batch_size = 6;
       auto circuit_2 = tp::Circuit::FromConfig(config);
 
-      std::vector<tp::FF> inputs{tp::FF(0), tp::FF(1)};
+      std::vector<tp::FF> inputs{tp::FF(-83427), tp::FF(185732)};
       circuit.SetClearInputsFlat(inputs);
       auto result = circuit.GetClearOutputsFlat()[0];
       circuit_2.SetClearInputsFlat(inputs);
@@ -264,10 +264,11 @@ TEST_CASE("Secure computation") {
       PARTY {
 	auto c = tp::Circuit::FromConfig(config);
 	c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
+	c._DummyPrep();
 	circuits.emplace_back(c);
       }
 
-      std::vector<tp::FF> inputs{tp::FF(0), tp::FF(1)};
+      std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
       circuits[0].SetClearInputsFlat(inputs);
       auto result = circuits[0].GetClearOutputsFlat();
       circuits[0].SetInputs(inputs);
@@ -289,6 +290,6 @@ TEST_CASE("Secure computation") {
       PARTY { circuits[i].OutputOwnerReceivesMu(); }
 
       // Check output
-      REQUIRE(circuits[0].GetOutput() == result);
+      REQUIRE(circuits[0].GetOutputs() == result);
     }
 }

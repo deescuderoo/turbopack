@@ -25,6 +25,18 @@ namespace tp {
       return mMu;
     };
 
+    void SetDummyLambda(FF lambda) {
+      mLambda = lambda;
+      mLambdaSet = true;
+    };
+
+    FF GetDummyLambda() {
+      if ( !mLambdaSet ) {
+	throw std::invalid_argument("Lambda is not set in this multiplication gate");
+      }
+      return mLambda;
+    };
+
     FF GetClear() {
       if ( !mEvaluated ) {
 	mClear = mLeft->GetClear() * mRight->GetClear();
@@ -41,6 +53,7 @@ namespace tp {
     PadMultGate() : MultGate() {};
 
     FF GetMu() override { return FF(0); }
+    FF GetDummyLambda() override { return FF(0); }
 
     // Just a technicality needed to make the parents of this gate be
     // itself when instantiated
@@ -80,6 +93,34 @@ namespace tp {
       _DummyPrep(FF(0), FF(0), FF(0));
     };
     
+    // Generates the preprocessing from the lambdas of the inputs
+    void PrepFromDummyLambdas() {
+      Vec lambda_A;
+      Vec lambda_B;
+      Vec delta_C;
+
+      for (std::size_t i = 0; i < mBatchSize; i++) {
+	auto l_A = mMultGatesPtrs[i]->GetLeft()->GetDummyLambda();
+	auto l_B = mMultGatesPtrs[i]->GetRight()->GetDummyLambda();
+	auto l_C = mMultGatesPtrs[i]->GetDummyLambda();
+	auto d_C = l_A * l_B - l_C;
+
+	lambda_A.Emplace(l_A);
+	lambda_B.Emplace(l_B);
+	delta_C.Emplace(d_C);
+      }
+      
+      // Using deg = BatchSize-1 ensures there's no randomness involved
+      auto poly_A = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, mPRG);
+      mPackedShrLambdaA = poly_A.Evaluate(FF(mID));
+	
+      auto poly_B = scl::details::EvPolyFromSecretsAndDegree(lambda_B, mBatchSize-1, mPRG);
+      mPackedShrLambdaB = poly_B.Evaluate(FF(mID));
+
+      auto poly_C = scl::details::EvPolyFromSecretsAndDegree(delta_C, mBatchSize-1, mPRG);
+      mPackedShrDeltaC = poly_C.Evaluate(FF(mID));
+    }
+
     // For cleartext evaluation: calls GetClear on all its gates to
     // populate their mClear. This could return a vector with these
     // values but we're not needing them
@@ -187,6 +228,9 @@ namespace tp {
     }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
+    }
+    void PrepFromDummyLambdas() {
+      for (auto batch : mBatches) batch->PrepFromDummyLambdas();
     }
 
     void ClearEvaluation() {
