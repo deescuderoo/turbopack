@@ -9,12 +9,12 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -pedantic -
 set(TEST_EXECUTABLE "tests.x")
 
 set(TP_SOURCE_FILES
-  src/tp/circuits.cc
-
   src/tp/gate.cc
   src/tp/mult_gate.cc
   src/tp/input_gate.cc
   src/tp/output_gate.cc
+
+  src/tp/circuits.cc
 
   src/tp/fd_prep.cc
 )
@@ -27,6 +27,7 @@ set(TEST_SOURCE_FILES
   test/test_add.cc
   test/test_output.cc
   test/test_mult.cc
+  test/test_fd_prep.cc
 )
 
 

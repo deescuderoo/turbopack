@@ -46,7 +46,7 @@ namespace tp {
       // Compute share
       FF shr_mu_C;
       shr_mu_C = mPackedShrMuB * mPackedShrLambdaA + mPackedShrMuA * mPackedShrLambdaB + \
-	mPackedShrMuA * mPackedShrMuB + mPackedShrLambdaAB - mPackedShrLambdaC;
+	mPackedShrMuA * mPackedShrMuB + mPackedShrDeltaC;
 
       // Send to P1
       mNetwork.Party(0)->Send(shr_mu_C); 

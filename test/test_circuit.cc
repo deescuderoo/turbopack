@@ -3,19 +3,21 @@
 
 #include "tp/circuits.h"
 
-TEST_CASE("Circuits") {
-  SECTION("Clear circuit") {
+TEST_CASE("Cleartext") {
+  SECTION("Hand-crafted circuit") {
     // Inputs x,y,u,v
     // x' = (x+y)*x,  y' = (x+y)*y
     // u' = (u+v)*u,  v' = (u+v)*v
     // z = (x' + y') + (u' + v')
 
-    auto c = tp::Circuit();
+    std::size_t batch_size(1);
+    std::size_t n_clients(2);
+    auto c = tp::Circuit(n_clients, batch_size);
     
     auto x = c.Input(0);
     auto y = c.Input(0);
-    auto u = c.Input(0);
-    auto v = c.Input(0);
+    auto u = c.Input(1);
+    auto v = c.Input(1);
 
     c.CloseInputs();
     
@@ -38,7 +40,6 @@ TEST_CASE("Circuits") {
     c.CloseOutputs();
 
     // Evaluate
-
     tp::FF X(21321);
     tp::FF Y(-3421);
     tp::FF U(170942);
@@ -66,8 +67,8 @@ TEST_CASE("Circuits") {
     tp::FF real = (X+Y)*X + (X+Y)*Y + (U+V)*U + (U+V)*V;
     REQUIRE(result == real);
   }
-  
-  SECTION("Artificial Circuit") 
+
+  SECTION("Artificial circuit") 
     {
       tp::CircuitConfig config;
       config.n_parties = 3;
@@ -135,5 +136,84 @@ TEST_CASE("Circuits") {
 
       REQUIRE(result_3a == result_4a);
       REQUIRE(result_3b == result_4b);
-    }
+    }  
+
+  
 }
+
+// TEST_CASE("Secure computation") {
+//   SECTION("Hand-crafted circuit") {
+//     // Inputs x,y,u,v
+//     // x' = (x+y)*x,  y' = (x+y)*y
+//     // u' = (u+v)*u,  v' = (u+v)*v
+//     // z = (x' + y') + (u' + v')
+
+//     std::size_t threshold = 4; // has to be even
+//     std::size_t batch_size = (threshold + 2)/2;
+//     std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
+//     auto networks = scl::Network::CreateFullInMemory(n_parties);
+//     std::size_t n_clients = n_parties;
+
+//     std::vector<tp::Circuit> circuits;
+//     circuits.reserve(n_parties);
+
+//     for(std::size_t i = 0; i < n_parties; i++){
+//     auto c = tp::Circuit(n_clients, batch_size);
+    
+//     auto x = c.Input(0);
+//     auto y = c.Input(0);
+//     auto u = c.Input(1);
+//     auto v = c.Input(1);
+
+//     c.CloseInputs();
+    
+//     auto xPy = c.Add(x, y);
+//     auto uPv = c.Add(u, v);
+
+//     auto x_ = c.Mult(xPy, x);
+//     auto y_ = c.Mult(xPy, y);
+//     auto u_ = c.Mult(uPv, u);
+//     auto v_ = c.Mult(uPv, v);
+//     c.LastLayer();
+
+   
+//     auto z1 = c.Add(x_, y_);
+//     auto z2 = c.Add(u_, v_);
+
+//     auto z = c.Add(z1, z2);
+
+//     auto output = c.Output(0,z);
+//     c.CloseOutputs();
+
+//     // TODO set network
+//     }
+
+//     // Evaluate
+//     tp::FF X(21321);
+//     tp::FF Y(-3421);
+//     tp::FF U(170942);
+//     tp::FF V(-894);
+
+//     x->ClearInput(X);
+//     y->ClearInput(Y);
+//     u->ClearInput(U);
+//     v->ClearInput(V);
+
+//     // Check that the addition gates are not populated yet
+//     REQUIRE(!(xPy->IsEvaluated()));
+//     REQUIRE(!(uPv->IsEvaluated()));
+
+//     // Testing GetClear()
+//     std::vector<tp::FF> inputs{X, Y, U, V};
+//     c.SetClearInputsFlat(inputs);
+//     auto result = c.GetClearOutputsFlat()[0];
+
+//     // Check that the call above populates upper gates
+//     REQUIRE(xPy->IsEvaluated());
+//     REQUIRE(uPv->IsEvaluated());
+
+//     // Check output
+//     tp::FF real = (X+Y)*X + (X+Y)*Y + (U+V)*U + (U+V)*V;
+//     REQUIRE(result == real);
+//   }
+// }

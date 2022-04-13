@@ -44,13 +44,18 @@ namespace tp {
       mParties = network.Size();
     }
 
+    void _DummyPrep(FF lambda) {
+      if (mID == mOwnerID) mLambda = lambda;
+    }
+    void _DummyPrep() {
+      _DummyPrep(FF(0));
+    }
+
     void SetInput(FF input) {
       if ( mID == mOwnerID ) mValue = input;
     }
 
     void OwnerSendsP1() {
-      mLambda = FF(0); // TODO this should be learned by owner with a
-		       // preprocessing protocol
       if (mID == mOwnerID) mNetwork.Party(0)->Send(mValue - mLambda);
     }
 
@@ -71,8 +76,8 @@ namespace tp {
     std::size_t mParties;
 
     // Protocol-specific
-    FF mLambda; // Lambda, known by owner
-    FF mValue; // Value, known by owner
+    FF mLambda; // Lambda, learned by owner
+    FF mValue; // Actual input, known by owner
   };
 
   // Used for padding batched inputs
@@ -102,11 +107,14 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for this
     // batch to be just 0 shares
-    void _DummyPrep() {
+    void _DummyPrep(FF lambda) {
       if ( mInputGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of input gates does not match the batch size");
 
-      // TODO
+      mPackedShrLambda = lambda;
+    }
+    void _DummyPrep() {
+      _DummyPrep(FF(0));
     }
                                             
     // For cleartext evaluation: calls GetClear on all its gates to
@@ -144,16 +152,10 @@ namespace tp {
     // The packed sharings associated to this batch
     FF mPackedShrLambda;
 
-    // Lambda. Known by owner
-    FF mLambda;
-
     // Network-related
     scl::Network mNetwork;
     std::size_t mID;
     std::size_t mParties;
-
-    // Intermediate-protocol
-    scl::PRG mPRG;
   };
 
   // Basically a collection of batches
@@ -194,6 +196,9 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for each
     // batch to be just 0 shares
+    void _DummyPrep(FF lambda) {
+      for (auto batch : mBatches) batch->_DummyPrep(lambda);
+    }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
     }
@@ -201,12 +206,6 @@ namespace tp {
     void ClearEvaluation() {
       for (auto batch : mBatches) batch->GetClear();
     }
-
-    // // Intended to be run one after the other TODO
-    // void P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
-    // void PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
-    // void PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
-    // void P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
 
   private:
     std::size_t mOwnerID;

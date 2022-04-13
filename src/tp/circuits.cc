@@ -161,10 +161,12 @@ namespace tp {
     circuit.LastLayer();
 
     // Output gates
+    std::size_t ctr(0);
     for (std::size_t i = 0; i < config.n_parties; i++) {
       for (std::size_t j = 0; j < config.out_gates[i]; j++) {
-	auto x = circuit.GetMultGate(config.depth - 1, i % config.width);
+	auto x = circuit.GetMultGate(config.depth - 1, ctr % config.width);
 	circuit.Output(i,x);
+	ctr++;
       }
     }
     circuit.CloseOutputs();

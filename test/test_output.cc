@@ -14,10 +14,12 @@ TEST_CASE("OutputGate") {
     std::size_t owner_id = 1;
     std::vector<std::shared_ptr<tp::InputGate>> x_gates;
     x_gates.reserve(n_parties);
+    tp::FF lambda;
 
     for (std::size_t i = 0; i < n_parties; i++) {
       x_gates.emplace_back(std::make_shared<tp::InputGate>(0)); // P1 input owner
       x_gates[i]->SetNetwork(networks[i], i);
+      x_gates[i]->_DummyPrep(lambda);
     }
 
     tp::FF X(542);
@@ -30,8 +32,7 @@ TEST_CASE("OutputGate") {
       z_gates[i]->SetNetwork(networks[i], i);
     }
 
-    // P1 pretends to have received mu. TODO revisit with prep.
-    x_gates[0]->_SetDummyMu(X);
+    x_gates[0]->_SetDummyMu(X - lambda);
     (void)z_gates[0]->GetMu();
 
     // P1 sends mu to owner
@@ -44,7 +45,6 @@ TEST_CASE("OutputGate") {
       z_gates[i]->OwnerReceivesMu();
     }
 
-    // TODO this may break once we get actual preprocessing
     REQUIRE(z_gates[owner_id]->GetValue() == X);
   }
 

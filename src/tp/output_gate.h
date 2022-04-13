@@ -51,6 +51,13 @@ namespace tp {
       mParties = network.Size();
     }
 
+    void _DummyPrep(FF lambda) {
+      if (mID == mOwnerID) mLambda = lambda;
+    }
+    void _DummyPrep() {
+      _DummyPrep(FF(0));
+    }
+
     // First step of the protocol where P1 sends mu to the owner
     void P1SendsMu() {
       if ( mID == 0 ) {
@@ -82,8 +89,7 @@ namespace tp {
 
     // Protocol-specific
     FF mLambda; // Lambda, learned by owner
-    // The value the owner of the gate will obtain as a result
-    FF mValue;
+    FF mValue;  // The value the owner will obtain as a result
   };
 
   // Used for padding batched outputs
@@ -115,11 +121,14 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for this
     // batch to be just 0 shares
-    void _DummyPrep() {
+    void _DummyPrep(FF lambda) {
       if ( mOutputGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of output gates does not match the batch size");
 
-      // TODO
+      mPackedShrLambda = lambda;
+    }
+    void _DummyPrep() {
+      _DummyPrep(FF(0));
     }
 
     // For cleartext evaluation: calls GetClear on all its gates to
@@ -159,9 +168,6 @@ namespace tp {
     scl::Network mNetwork;
     std::size_t mID;
     std::size_t mParties;
-
-    // Intermediate-protocol
-    scl::PRG mPRG;
   };
 
   // Basically a collection of batches
@@ -203,6 +209,9 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for each
     // batch to be just 0 shares
+    void _DummyPrep(FF lambda) {
+      for (auto batch : mBatches) batch->_DummyPrep(lambda);
+    }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
     }
@@ -210,12 +219,6 @@ namespace tp {
     void ClearEvaluation() {
       for (auto batch : mBatches) batch->GetClear();
     }
-
-    // // Intended to be run one after the other TODO
-    // void P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
-    // void PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
-    // void PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
-    // void P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
 
   private:
     std::size_t mOwnerID;

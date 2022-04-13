@@ -82,9 +82,16 @@ namespace tp {
     // Closes the current layer and does not open a new one. 
     void LastLayer();
 
-    // Populates each batch with dummy preprocessing (all zeros)
-    void DummyPrep() {
-      for (auto layer : mMultLayers) layer._DummyPrep();
+    // Populates each batch with dummy preprocessing
+    void _DummyPrep(FF lambda) {
+      for (auto input_layer : mInputLayers) input_layer._DummyPrep(lambda);
+      for (auto mult_layer : mMultLayers) mult_layer._DummyPrep(lambda, lambda, lambda*lambda - lambda);
+      for (auto output_layer : mOutputLayers) output_layer._DummyPrep(lambda);
+    }
+    void _DummyPrep() {
+      for (auto input_layer : mInputLayers) input_layer._DummyPrep();
+      for (auto mult_layer : mMultLayers) mult_layer._DummyPrep();
+      for (auto output_layer : mOutputLayers) output_layer._DummyPrep();
     }
 
     // Used to fetch input and output gates

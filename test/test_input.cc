@@ -15,12 +15,17 @@ TEST_CASE("InputGate") {
     x_gates.reserve(n_parties);
     y_gates.reserve(n_parties);
 
+    tp::FF lambda_x(50942);
+    tp::FF lambda_y(-4523);
+
     for (std::size_t i = 0; i < n_parties; i++) {
       x_gates.emplace_back(std::make_shared<tp::InputGate>(0)); // P1 owner
       x_gates[i]->SetNetwork(networks[i], i);
+      x_gates[i]->_DummyPrep(lambda_x);
 
       y_gates.emplace_back(std::make_shared<tp::InputGate>(1)); // P2 owner
       y_gates[i]->SetNetwork(networks[i], i);
+      y_gates[i]->_DummyPrep(lambda_y);
     }
 
     tp::FF X(542);
@@ -50,9 +55,10 @@ TEST_CASE("InputGate") {
     REQUIRE(x_gates[0]->IsLearned());
     REQUIRE(y_gates[0]->IsLearned());
 
-    // TODO this will break once we get actual preprocessing
-    REQUIRE(x_gates[0]->GetMu() == X);
-    REQUIRE(y_gates[0]->GetMu() == Y);
+    tp::FF mu_x = x_gates[0]->GetMu();
+    tp::FF mu_y = y_gates[0]->GetMu();
+    REQUIRE(X == mu_x + lambda_x);
+    REQUIRE(Y == mu_y + lambda_y);
   }
 
 }

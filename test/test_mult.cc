@@ -10,6 +10,10 @@ TEST_CASE("Mult") {
   std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
   auto networks = scl::Network::CreateFullInMemory(n_parties);
 
+  tp::FF lambda_x(-64);
+  tp::FF lambda_y(5786);
+  tp::FF lambda_z(-658492);
+
   std::vector<std::shared_ptr<tp::InputGate>> x_gates;
   std::vector<std::shared_ptr<tp::InputGate>> y_gates;
   x_gates.reserve(n_parties);
@@ -24,18 +28,10 @@ TEST_CASE("Mult") {
   tp::FF Y(-3421);
 
   for (std::size_t i = 0; i < n_parties; i++) {
-    x_gates[i]->_SetDummyMu(X);
-    y_gates[i]->_SetDummyMu(Y);
+    x_gates[i]->_SetDummyMu(X - lambda_x);
+    y_gates[i]->_SetDummyMu(Y - lambda_y);
   }  
   
-  SECTION("MultGate") {
-    // This works because the lambda masks are all zero
-    for (std::size_t i = 0; i < n_parties; i++) {
-      REQUIRE( X == x_gates[i]->GetMu() );
-      REQUIRE( Y == y_gates[i]->GetMu() );
-    }   
-  }
-
   SECTION("MultBatch"){
     std::vector<std::shared_ptr<tp::MultGate>> z_gates;
     z_gates.reserve(n_parties);
@@ -52,6 +48,7 @@ TEST_CASE("Mult") {
       batches.emplace_back(std::make_shared<tp::MultBatch>(1));
       batches[i]->Append(z_gates[i]);
       batches[i]->SetNetwork(networks[i], i);
+      batches[i]->_DummyPrep(lambda_x, lambda_y, lambda_x*lambda_y - lambda_z);
     }
 
     for (std::size_t i = 0; i < n_parties; i++) {
@@ -78,7 +75,8 @@ TEST_CASE("Mult") {
     // Check result
     
     tp::FF Z = X*Y;
-    REQUIRE( Z == z_gates[0]->GetMu() ); // TODO this breaks with actual preprocessing
+    tp::FF mu_z = z_gates[0]->GetMu();
+    REQUIRE( Z == mu_z + lambda_z ); 
   }
 
   SECTION("MultLayer"){
@@ -98,6 +96,8 @@ TEST_CASE("Mult") {
       layer.Append(z_gates[i]);
       layer.Close();
       layer.SetNetwork(networks[i], i);
+
+      layer._DummyPrep(lambda_x, lambda_y, lambda_x*lambda_y - lambda_z); 
 
       layers.emplace_back(layer);
     }
@@ -127,7 +127,8 @@ TEST_CASE("Mult") {
     // Check result
     
     tp::FF Z = X*Y;
-    REQUIRE( Z == z_gates[0]->GetMu() ); // TODO this breaks with actual preprocessing
+    tp::FF mu_z = z_gates[0]->GetMu();
+    REQUIRE( Z == mu_z + lambda_z ); 
   }
 
 }

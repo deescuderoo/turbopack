@@ -66,17 +66,20 @@ namespace tp {
       mMultGatesPtrs.emplace_back(mult_gate); };
 
     // For testing purposes: sets the required preprocessing for this
-    // batch to be just 0 shares
-    void _DummyPrep() {
+    // batch to be just constant shares
+    void _DummyPrep(FF lambda_A, FF lambda_B, FF delta_C) {
       if ( mMultGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of mult gates does not match the batch size");
 
-      mPackedShrLambdaA = FF(0);
-      mPackedShrLambdaB = FF(0);
-      mPackedShrLambdaC = FF(0);
-      mPackedShrLambdaAB = FF(0);
+      mPackedShrLambdaA = lambda_A;
+      mPackedShrLambdaB = lambda_B;
+      mPackedShrDeltaC = delta_C;
     };
 
+    void _DummyPrep() {
+      _DummyPrep(FF(0), FF(0), FF(0));
+    };
+    
     // For cleartext evaluation: calls GetClear on all its gates to
     // populate their mClear. This could return a vector with these
     // values but we're not needing them
@@ -124,8 +127,7 @@ namespace tp {
     // The packed sharings associated to this batch
     FF mPackedShrLambdaA;
     FF mPackedShrLambdaB;
-    FF mPackedShrLambdaC;
-    FF mPackedShrLambdaAB;
+    FF mPackedShrDeltaC;
 
     // Network-related
     scl::Network mNetwork;
@@ -136,8 +138,6 @@ namespace tp {
     scl::PRG mPRG;
     FF mPackedShrMuA;    // Shares of mu_alpha
     FF mPackedShrMuB;    // Shares of mu_beta
-    FF mPackedShrMuC;    // Shares of mu_gamma
-
   };
 
   // Basically a collection of batches
@@ -182,6 +182,9 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for each
     // batch to be just 0 shares
+    void _DummyPrep(FF lambda_A, FF lambda_B, FF delta_C) {
+      for (auto batch : mBatches) batch->_DummyPrep(lambda_A, lambda_B, delta_C);
+    }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
     }
