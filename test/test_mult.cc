@@ -24,8 +24,8 @@ TEST_CASE("Mult") {
   tp::FF Y(-3421);
 
   for (std::size_t i = 0; i < n_parties; i++) {
-    x_gates[i]->_SetDummyInput(X);
-    y_gates[i]->_SetDummyInput(Y);
+    x_gates[i]->_SetDummyMu(X);
+    y_gates[i]->_SetDummyMu(Y);
   }  
   
   SECTION("MultGate") {

@@ -24,6 +24,13 @@ namespace tp {
     // For cleartext evaluation
     bool IsEvaluated() { return mEvaluated; };
 
+    // For testing purposes. Sets the input to the given
+    // value. Assumes the associated mask is 0, and P1 learns the
+    // "masked" value.
+    void _SetDummyMu(FF input) {
+      mMu = input;
+      mLearned = true;
+    };
 
     // Get the cleartext value associated to the output of this gate,
     // if computed already (cleartext evaluation)

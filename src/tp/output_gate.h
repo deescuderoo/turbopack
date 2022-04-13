@@ -41,7 +41,35 @@ namespace tp {
       }
       return mClear;
     }
-    // TODO output protocol
+
+    // Set network parameters for evaluating the protocol. This is not
+    // part of the creation of the batch since sometimes we just want
+    // to evaluate in the clear and this won't be needed
+    void SetNetwork(scl::Network& network, std::size_t id) {
+      mNetwork = network;
+      mID = id;
+      mParties = network.Size();
+    }
+
+    // First step of the protocol where P1 sends mu to the owner
+    void P1SendsMu() {
+      if ( mID == 0 ) {
+	if ( !mLearned )
+	  throw std::invalid_argument("Error: P1 hasn't learned output mu");
+	mNetwork.Party(mOwnerID)->Send(mMu);
+      }
+    }
+    
+    // The owner receives mu and sets the final value
+    void OwnerReceivesMu() {
+      if ( mID == mOwnerID ) {
+	FF mu;
+	mNetwork.Party(0)->Recv(mu);
+	mValue = mLambda + mu;
+      }
+    }
+
+    FF GetValue () { return mValue; }
 
   private:
     // ID of the party who owns this gate
@@ -53,8 +81,9 @@ namespace tp {
     std::size_t mParties;
 
     // Protocol-specific
-    FF mLambda; // Lambda, known by owner
-
+    FF mLambda; // Lambda, learned by owner
+    // The value the owner of the gate will obtain as a result
+    FF mValue;
   };
 
   // Used for padding batched outputs
@@ -119,7 +148,6 @@ namespace tp {
     std::size_t mOwnerID;
 
     std::size_t mBatchSize;
-
 
     // The output gates that are part of this batch
     vec<std::shared_ptr<OutputGate>> mOutputGatesPtrs;

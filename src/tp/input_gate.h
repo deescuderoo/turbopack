@@ -21,14 +21,6 @@ namespace tp {
       mEvaluated = true;
     };
 
-    // For testing purposes. Sets the input to the given
-    // value. Assumes the associated mask is 0, and P1 learns the
-    // "masked" value.
-    void _SetDummyInput(FF input) {
-      mMu = input;
-      mLearned = true;
-    };
-
     std::size_t GetOwner() {
       return mOwnerID;
     };
