@@ -52,10 +52,14 @@ namespace tp {
       mParties = network.Size();
     }
 
-    void OwnerSendsP1(FF input) {
+    void SetInput(FF input) {
+      if ( mID == mOwnerID ) mValue = input;
+    }
+
+    void OwnerSendsP1() {
       mLambda = FF(0); // TODO this should be learned by owner with a
 		       // preprocessing protocol
-      if (mID == mOwnerID) mNetwork.Party(0)->Send(input - mLambda);
+      if (mID == mOwnerID) mNetwork.Party(0)->Send(mValue - mLambda);
     }
 
     void P1Receives() {
@@ -76,6 +80,7 @@ namespace tp {
 
     // Protocol-specific
     FF mLambda; // Lambda, known by owner
+    FF mValue; // Value, known by owner
   };
 
   // Used for padding batched inputs
@@ -111,7 +116,7 @@ namespace tp {
 
       // TODO
     }
-
+                                            
     // For cleartext evaluation: calls GetClear on all its gates to
     // populate their mClear. This could return a vector with these
     // values but we're not needing them
@@ -146,6 +151,9 @@ namespace tp {
 
     // The packed sharings associated to this batch
     FF mPackedShrLambda;
+
+    // Lambda. Known by owner
+    FF mLambda;
 
     // Network-related
     scl::Network mNetwork;

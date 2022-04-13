@@ -23,6 +23,8 @@ set(TEST_SOURCE_FILES
   test/main.cc
 
   test/test_circuit.cc
+  test/test_input.cc
+  test/test_add.cc
   test/test_mult.cc
 )
 

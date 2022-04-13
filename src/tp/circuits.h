@@ -115,6 +115,37 @@ namespace tp {
     // Returns one long vector with all the outputs
     std::vector<FF> GetClearOutputsFlat();
 
+    // PROTOCOLS
+    // Set network parameters for evaluating the protocol. This is not
+    // part of the creation of the batch since sometimes we just want
+    // to evaluate in the clear and this won't be needed
+    void SetNetwork(scl::Network& network, std::size_t id) {
+      mNetwork = network;
+      mID = id;
+      mParties = network.Size();
+    }
+
+    // Called separately by each party
+    void SetInputs(std::vector<FF> inputs) {
+      if ( inputs.size() == mFlatInputGates[mID].size() )
+	throw std::invalid_argument("Number of inputs do not match");
+      // Set input and send to P1
+      for (std::size_t i = 0; i < inputs.size(); i++) {
+	mFlatInputGates[mID][i]->SetInput(inputs[i]);
+      }      
+    }
+
+    void RunInput() {
+      // Send to P1
+      for (auto input_gate : mFlatInputGates[mID]) {
+	input_gate->OwnerSendsP1();
+      }
+      // P1 receives
+      for (auto input_gate : mFlatInputGates[mID]) {
+	input_gate->P1Receives();
+      }
+    }
+
     // Generates a synthetic circuit with the desired metrics
     static Circuit FromConfig(CircuitConfig config);
 
@@ -148,6 +179,11 @@ namespace tp {
     std::size_t mClients; // number of clients
     std::size_t mWidth=0;
     std::size_t mSize=0; // number of multiplications
+
+    // Network-related
+    scl::Network mNetwork;
+    std::size_t mID;
+    std::size_t mParties;
   };
 
 

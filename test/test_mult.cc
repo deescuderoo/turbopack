@@ -1,14 +1,15 @@
 #include <catch2/catch.hpp>
 #include <iostream>
 
-#include "tp/circuits.h"
-
-std::size_t threshold = 4; // has to be even
-std::size_t batch_size = (threshold + 2)/2;
-std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
-auto networks = scl::Network::CreateFullInMemory(n_parties);
+#include "tp/input_gate.h"
+#include "tp/mult_gate.h"
 
 TEST_CASE("Mult") {
+  std::size_t threshold = 4; // has to be even
+  std::size_t batch_size = (threshold + 2)/2;
+  std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
+  auto networks = scl::Network::CreateFullInMemory(n_parties);
+
   std::vector<std::shared_ptr<tp::InputGate>> x_gates;
   std::vector<std::shared_ptr<tp::InputGate>> y_gates;
   x_gates.reserve(n_parties);
