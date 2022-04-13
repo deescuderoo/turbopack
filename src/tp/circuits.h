@@ -83,20 +83,25 @@ namespace tp {
     void LastLayer();
 
     // Populates each batch with dummy preprocessing
-    void _DummyPrep(FF lambda) {
-      for (auto input_layer : mInputLayers) input_layer._DummyPrep(lambda);
-      for (auto mult_layer : mMultLayers) mult_layer._DummyPrep(lambda, lambda, lambda*lambda - lambda);
-      for (auto output_layer : mOutputLayers) output_layer._DummyPrep(lambda);
-    }
     void _DummyPrep() {
       for (auto input_layer : mInputLayers) input_layer._DummyPrep();
       for (auto mult_layer : mMultLayers) mult_layer._DummyPrep();
       for (auto output_layer : mOutputLayers) output_layer._DummyPrep();
     }
 
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
+      mNetwork = network;
+      mID = id;
+      mParties = network->Size();
+      for (auto input_layer : mInputLayers) input_layer.SetNetwork(network, id);
+      for (auto mult_layer : mMultLayers) mult_layer.SetNetwork(network, id);
+      for (auto output_layer : mOutputLayers) output_layer.SetNetwork(network, id);
+    }
+
     // Used to fetch input and output gates
     std::shared_ptr<InputGate> GetInputGate(std::size_t owner_id, std::size_t idx) { return mFlatInputGates[owner_id][idx]; }
     std::shared_ptr<InputGate> GetInputGate(std::size_t idx) { return mInputGates[idx]; }
+    std::shared_ptr<OutputGate> GetOutputGate(std::size_t owner_id, std::size_t idx) { return mFlatOutputGates[owner_id][idx]; }
     std::shared_ptr<OutputGate> GetOutputGate(std::size_t idx) { return mOutputGates[idx]; }
 
     // Used to fetch the idx-th mult gate of the desired layer
@@ -122,19 +127,22 @@ namespace tp {
     // Returns one long vector with all the outputs
     std::vector<FF> GetClearOutputsFlat();
 
-    // PROTOCOLS
-    // Set network parameters for evaluating the protocol. This is not
-    // part of the creation of the batch since sometimes we just want
-    // to evaluate in the clear and this won't be needed
-    void SetNetwork(scl::Network& network, std::size_t id) {
-      mNetwork = network;
-      mID = id;
-      mParties = network.Size();
+    // Returns a vector with the outputs after computation
+    std::vector<FF> GetOutput() {
+      std::vector<FF> output;
+      output.reserve(mFlatOutputGates[mID].size());
+      for (auto output_gate : mFlatOutputGates[mID]) {
+	output.emplace_back(output_gate->GetValue());
+      }
+      return output;
     }
 
+    // PROTOCOLS
+
+    // Set inputs
     // Called separately by each party
     void SetInputs(std::vector<FF> inputs) {
-      if ( inputs.size() == mFlatInputGates[mID].size() )
+      if ( inputs.size() != mFlatInputGates[mID].size() )
 	throw std::invalid_argument("Number of inputs do not match");
       // Set input and send to P1
       for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -142,17 +150,67 @@ namespace tp {
       }      
     }
 
-    void RunInput() {
-      // Send to P1
-      for (auto input_gate : mFlatInputGates[mID]) {
-	input_gate->OwnerSendsP1();
-      }
-      // P1 receives
-      for (auto input_gate : mFlatInputGates[mID]) {
-	input_gate->P1Receives();
+    // Input protocol
+    void InputOwnerSendsP1() {
+      for (std::size_t i = 0; i < mClients; i++) {
+	for (auto input_gate : mFlatInputGates[i]) {
+	  input_gate->OwnerSendsP1();
+	}
       }
     }
+    void InputP1Receives() {
+      for (std::size_t i = 0; i < mClients; i++) { // outer loop can be removed if needed for opt.
+	for (auto input_gate : mFlatInputGates[i]) {
+	  input_gate->P1Receives();
+	}
+      }
+    }
+    void RunInput() {
+      InputOwnerSendsP1();
+      InputP1Receives();
+    }
 
+    // Multiplications in the i-th layer
+    void MultP1Sends(std::size_t layer) { mMultLayers[layer].P1Sends(); }
+    void MultPartiesReceive(std::size_t layer) { mMultLayers[layer].PartiesReceive(); }
+    void MultPartiesSend(std::size_t layer) { mMultLayers[layer].PartiesSend(); }
+    void MultP1Receives(std::size_t layer) { mMultLayers[layer].P1Receives(); }
+
+    void RunMult(std::size_t layer) {
+      MultP1Sends(layer);
+      MultPartiesReceive(layer);
+      MultPartiesSend(layer);
+      MultP1Receives(layer);
+    }
+
+    // Output layers
+    void OutputP1SendsMu() {
+      for (std::size_t i = 0; i < mClients; i++) {
+	for (auto output_gate : mFlatOutputGates[i]) {
+	  output_gate->P1SendsMu();
+	}
+      }
+    }
+    void OutputOwnerReceivesMu() {
+      for (std::size_t i = 0; i < mClients; i++) { // outer loop can be removed if needed for opt.
+	for (auto output_gate : mFlatOutputGates[i]) {
+	  output_gate->OwnerReceivesMu();
+	}
+      }
+    }
+    void RunOutput() {
+      OutputP1SendsMu();
+      OutputOwnerReceivesMu();
+    }
+
+    void RunProtocol() {
+      RunInput();
+      for (std::size_t layer = 0; layer < mMultLayers.size(); layer++) {
+	RunMult(layer);
+      }
+      RunOutput();
+    }
+    
     // Generates a synthetic circuit with the desired metrics
     static Circuit FromConfig(CircuitConfig config);
 
@@ -188,7 +246,7 @@ namespace tp {
     std::size_t mSize=0; // number of multiplications
 
     // Network-related
-    scl::Network mNetwork;
+    std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
   };

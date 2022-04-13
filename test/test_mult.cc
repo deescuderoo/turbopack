@@ -10,9 +10,9 @@ TEST_CASE("Mult") {
   std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
   auto networks = scl::Network::CreateFullInMemory(n_parties);
 
-  tp::FF lambda_x(-64);
-  tp::FF lambda_y(5786);
-  tp::FF lambda_z(-658492);
+  tp::FF lambda_x(239);
+  tp::FF lambda_y(-3421);
+  tp::FF lambda_z(942582);
 
   std::vector<std::shared_ptr<tp::InputGate>> x_gates;
   std::vector<std::shared_ptr<tp::InputGate>> y_gates;
@@ -47,8 +47,8 @@ TEST_CASE("Mult") {
     for (std::size_t i = 0; i < n_parties; i++) {
       batches.emplace_back(std::make_shared<tp::MultBatch>(1));
       batches[i]->Append(z_gates[i]);
-      batches[i]->SetNetwork(networks[i], i);
-      batches[i]->_DummyPrep(lambda_x, lambda_y, lambda_x*lambda_y - lambda_z);
+      batches[i]->SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
+      batches[i]->_DummyPrep(lambda_x, lambda_y, lambda_z);
     }
 
     for (std::size_t i = 0; i < n_parties; i++) {
@@ -75,7 +75,7 @@ TEST_CASE("Mult") {
     // Check result
     
     tp::FF Z = X*Y;
-    tp::FF mu_z = z_gates[0]->GetMu();
+    tp::FF mu_z = z_gates[0]->GetMu(); 
     REQUIRE( Z == mu_z + lambda_z ); 
   }
 
@@ -95,30 +95,30 @@ TEST_CASE("Mult") {
       auto layer = tp::MultLayer(batch_size);
       layer.Append(z_gates[i]);
       layer.Close();
-      layer.SetNetwork(networks[i], i);
+      layer.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
 
-      layer._DummyPrep(lambda_x, lambda_y, lambda_x*lambda_y - lambda_z); 
+      layer._DummyPrep(lambda_x, lambda_y, lambda_z); 
 
       layers.emplace_back(layer);
     }
 
     // Run the protocol
     for (std::size_t i = 0; i < n_parties; i++) {
-      layers[i]._P1Sends(); // Only P1 works here
+      layers[i].P1Sends(); // Only P1 works here
     }
     
     for (std::size_t i = 0; i < n_parties; i++) {
-      layers[i]._PartiesReceive(); 
+      layers[i].PartiesReceive(); 
     }
 
     for (std::size_t i = 0; i < n_parties; i++) {
-      layers[i]._PartiesSend(); 
+      layers[i].PartiesSend(); 
     }
 
     REQUIRE(!z_gates[0]->IsLearned()); // P1 hasn't learned anything yet
 
     for (std::size_t i = 0; i < n_parties; i++) {
-      layers[i]._P1Receives(); // Only P1 works here
+      layers[i].P1Receives(); // Only P1 works here
     }
 
     REQUIRE(z_gates[0]->IsLearned()); // P1 learned mu already

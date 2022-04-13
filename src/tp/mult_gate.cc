@@ -25,8 +25,8 @@ namespace tp {
       // 3. P1 sends the shares
 
       for (std::size_t i = 0; i < mParties; ++i) {
-	mNetwork.Party(i)->Send(shares_A[i]);
-	mNetwork.Party(i)->Send(shares_B[i]);
+	mNetwork->Party(i)->Send(shares_A[i]);
+	mNetwork->Party(i)->Send(shares_B[i]);
       }
     }
   }
@@ -35,8 +35,8 @@ namespace tp {
       FF shr_mu_A;
       FF shr_mu_B;
 
-      mNetwork.Party(0)->Recv(shr_mu_A);
-      mNetwork.Party(0)->Recv(shr_mu_B);
+      mNetwork->Party(0)->Recv(shr_mu_A);
+      mNetwork->Party(0)->Recv(shr_mu_B);
 
       mPackedShrMuA = shr_mu_A;
       mPackedShrMuB = shr_mu_B;
@@ -49,7 +49,7 @@ namespace tp {
 	mPackedShrMuA * mPackedShrMuB + mPackedShrDeltaC;
 
       // Send to P1
-      mNetwork.Party(0)->Send(shr_mu_C); 
+      mNetwork->Party(0)->Send(shr_mu_C); 
     }
 
   void MultBatch::P1Receives() {
@@ -58,7 +58,7 @@ namespace tp {
 	Vec shares;
 	for (std::size_t i = 0; i < mParties; ++i) {
 	  FF shr_mu_C;
-	  mNetwork.Party(i)->Recv(shr_mu_C);
+	  mNetwork->Party(i)->Recv(shr_mu_C);
 	  shares.Emplace(shr_mu_C);
 	}
 	mu_gamma = scl::details::SecretsFromSharesAndLength(shares, mBatchSize);

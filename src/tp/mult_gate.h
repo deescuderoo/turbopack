@@ -67,13 +67,13 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for this
     // batch to be just constant shares
-    void _DummyPrep(FF lambda_A, FF lambda_B, FF delta_C) {
+    void _DummyPrep(FF lambda_A, FF lambda_B, FF lambda_C) {
       if ( mMultGatesPtrs.size() != mBatchSize )
 	throw std::invalid_argument("The number of mult gates does not match the batch size");
 
       mPackedShrLambdaA = lambda_A;
       mPackedShrLambdaB = lambda_B;
-      mPackedShrDeltaC = delta_C;
+      mPackedShrDeltaC = lambda_A * lambda_B - lambda_C;
     };
 
     void _DummyPrep() {
@@ -96,10 +96,10 @@ namespace tp {
     // Set network parameters for evaluating the protocol. This is not
     // part of the creation of the batch since sometimes we just want
     // to evaluate in the clear and this won't be needed
-    void SetNetwork(scl::Network& network, std::size_t id) {
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
       mNetwork = network;
       mID = id;
-      mParties = network.Size();
+      mParties = network->Size();
     }
 
     // First step of the protocol where P1 sends the packed shares of
@@ -130,7 +130,7 @@ namespace tp {
     FF mPackedShrDeltaC;
 
     // Network-related
-    scl::Network mNetwork;
+    std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
 
@@ -182,8 +182,8 @@ namespace tp {
 
     // For testing purposes: sets the required preprocessing for each
     // batch to be just 0 shares
-    void _DummyPrep(FF lambda_A, FF lambda_B, FF delta_C) {
-      for (auto batch : mBatches) batch->_DummyPrep(lambda_A, lambda_B, delta_C);
+    void _DummyPrep(FF lambda_A, FF lambda_B, FF lambda_C) {
+      for (auto batch : mBatches) batch->_DummyPrep(lambda_A, lambda_B, lambda_C);
     }
     void _DummyPrep() {
       for (auto batch : mBatches) batch->_DummyPrep();
@@ -197,26 +197,27 @@ namespace tp {
     // part of the creation of the layer since sometimes we just want
     // to evaluate in the clear and this won't be needed
     // To be used after the layer is closed
-    void SetNetwork(scl::Network& network, std::size_t id) {
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
+      mNetwork = network;
+      mID = id;
+      mParties = network->Size();
       for (auto batch : mBatches) batch->SetNetwork(network, id);
     }
 
-    void RunProtocol() {
-      for (auto batch : mBatches) batch->P1Sends();
-      for (auto batch : mBatches) batch->PartiesReceive(); 
-      for (auto batch : mBatches) batch->PartiesSend(); 
-      for (auto batch : mBatches) batch->P1Receives(); 
-    }
-
     // For testing purposes, to avoid blocking
-    void _P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
-    void _PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
-    void _PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
-    void _P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
+    void P1Sends() { for (auto batch : mBatches) batch->P1Sends(); }
+    void PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
+    void PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
+    void P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
 
   private:
     vec<std::shared_ptr<MultBatch>> mBatches;
     std::size_t mBatchSize;
+
+    // Network-related
+    std::shared_ptr<scl::Network> mNetwork;
+    std::size_t mID;
+    std::size_t mParties;
   };
 } // namespace tp
 

@@ -18,7 +18,7 @@ TEST_CASE("OutputGate") {
 
     for (std::size_t i = 0; i < n_parties; i++) {
       x_gates.emplace_back(std::make_shared<tp::InputGate>(0)); // P1 input owner
-      x_gates[i]->SetNetwork(networks[i], i);
+      x_gates[i]->SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
       x_gates[i]->_DummyPrep(lambda);
     }
 
@@ -29,7 +29,7 @@ TEST_CASE("OutputGate") {
 
     for (std::size_t i = 0; i < n_parties; i++) {
       z_gates.emplace_back(std::make_shared<tp::OutputGate>(owner_id, x_gates[i])); 
-      z_gates[i]->SetNetwork(networks[i], i);
+      z_gates[i]->SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
     }
 
     x_gates[0]->_SetDummyMu(X - lambda);

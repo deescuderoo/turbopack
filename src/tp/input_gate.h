@@ -38,10 +38,10 @@ namespace tp {
     };
 
     // Protocol-related
-    void SetNetwork(scl::Network& network, std::size_t id) {
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
       mNetwork = network;
       mID = id;
-      mParties = network.Size();
+      mParties = network->Size();
     }
 
     void _DummyPrep(FF lambda) {
@@ -56,12 +56,12 @@ namespace tp {
     }
 
     void OwnerSendsP1() {
-      if (mID == mOwnerID) mNetwork.Party(0)->Send(mValue - mLambda);
+      if (mID == mOwnerID) mNetwork->Party(0)->Send(mValue - mLambda);
     }
 
     void P1Receives() {
       if (mID == 0) {
-	mNetwork.Party(mOwnerID)->Recv(mMu);
+	mNetwork->Party(mOwnerID)->Recv(mMu);
 	mLearned = true;
       }
     }
@@ -71,7 +71,7 @@ namespace tp {
     std::size_t mOwnerID;
 
     // Network-related
-    scl::Network mNetwork;
+    std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
 
@@ -112,6 +112,7 @@ namespace tp {
 	throw std::invalid_argument("The number of input gates does not match the batch size");
 
       mPackedShrLambda = lambda;
+      for (auto input_gate : mInputGatesPtrs) input_gate->_DummyPrep(lambda);
     }
     void _DummyPrep() {
       _DummyPrep(FF(0));
@@ -133,10 +134,11 @@ namespace tp {
     // Set network parameters for evaluating the protocol. This is not
     // part of the creation of the batch since sometimes we just want
     // to evaluate in the clear and this won't be needed
-    void SetNetwork(scl::Network& network, std::size_t id) {
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
       mNetwork = network;
       mID = id;
-      mParties = network.Size();
+      mParties = network->Size();
+      for (auto input_gate : mInputGatesPtrs) input_gate->SetNetwork(network, id);
     }
 
   private:
@@ -153,7 +155,7 @@ namespace tp {
     FF mPackedShrLambda;
 
     // Network-related
-    scl::Network mNetwork;
+    std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
   };
@@ -203,6 +205,13 @@ namespace tp {
       for (auto batch : mBatches) batch->_DummyPrep();
     }
 
+    void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
+      mNetwork = network;
+      mID = id;
+      mParties = network->Size();
+      for (auto batch : mBatches) batch->SetNetwork(network, id);
+    }
+
     void ClearEvaluation() {
       for (auto batch : mBatches) batch->GetClear();
     }
@@ -211,6 +220,11 @@ namespace tp {
     std::size_t mOwnerID;
     vec<std::shared_ptr<InputBatch>> mBatches;
     std::size_t mBatchSize;
+
+    // Network-related
+    std::shared_ptr<scl::Network> mNetwork;
+    std::size_t mID;
+    std::size_t mParties;
   };
 
 } // namespace tp
