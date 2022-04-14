@@ -52,17 +52,13 @@ namespace tp {
     std::shared_ptr<InputGate> Input(std::size_t owner_id);
 
     // Consolidates the batches for the inputs
-    void CloseInputs() {
-      for (auto input_layer : mInputLayers) input_layer.Close();
-    }
+    void CloseInputs() { for (auto input_layer : mInputLayers) input_layer.Close(); }
 
     // Append output gates
     std::shared_ptr<OutputGate> Output(std::size_t owner_id, std::shared_ptr<Gate> output);
 
     // Consolidates the batches for the outputs
-    void CloseOutputs() {
-      for (auto output_layer : mOutputLayers) output_layer.Close();
-    }
+    void CloseOutputs() { for (auto output_layer : mOutputLayers) output_layer.Close(); }
 
     // Append addition gates
     std::shared_ptr<AddGate> Add(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
@@ -125,129 +121,46 @@ namespace tp {
     // DUMMY PREPROCESSING
     
     // Populates each batch with dummy preprocessing (all zeros)
-    void _DummyPrep() {
-      for (auto input_layer : mInputLayers) input_layer._DummyPrep();
-      for (auto mult_layer : mMultLayers) mult_layer._DummyPrep();
-      for (auto output_layer : mOutputLayers) output_layer._DummyPrep();
-    }
+    void _DummyPrep();
 
     // Set all settable lambdas to a constant
-    void SetDummyLambdas(FF lambda) {
-      // Output wires of multiplications
-      for (std::size_t layer = 0; layer < GetDepth(); layer++) {
-	for (auto mult_gate : mFlatMultLayers[layer]) {
-	  mult_gate->SetDummyLambda(lambda);
-	}
-      }
-      // Output wires of input gates
-      for (auto input_gate : mInputGates) {
-	input_gate->SetDummyLambda(lambda);
-      }
-    }
+    void SetDummyLambdas(FF lambda);
 
     // Populates the lambdas of addition and output gates
-    void PopulateDummyLambdas() {
-      // Addition gates
-      for (auto add_gate : mAddGates) {
-	(void)add_gate->GetDummyLambda();
-      }
-      // Output gates
-      for (auto output_gate : mOutputGates) {
-	(void)output_gate->GetDummyLambda();
-      }      
-    }
+    void PopulateDummyLambdas();
 
     // Sets the lambdas for the output wires of addition and output
     // gates based on the lambdas for multiplications and input gates
-    void PrepFromDummyLambdas() {
-      for (auto input_layer : mInputLayers) input_layer.PrepFromDummyLambdas();
-      for (auto output_layer : mOutputLayers) output_layer.PrepFromDummyLambdas();
-      for (auto mult_layer : mMultLayers) mult_layer.PrepFromDummyLambdas();
-    }
+    void PrepFromDummyLambdas();
 
     // PROTOCOLS
 
     // Set inputs
     // Called separately by each party
-    void SetInputs(std::vector<FF> inputs) {
-      if ( inputs.size() != mFlatInputGates[mID].size() )
-	throw std::invalid_argument("Number of inputs do not match");
-      // Set input and send to P1
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-	mFlatInputGates[mID][i]->SetInput(inputs[i]);
-      }      
-    }
+    void SetInputs(std::vector<FF> inputs);
 
     // Input protocol
-    void InputOwnerSendsP1() {
-      for (std::size_t i = 0; i < mClients; i++) {
-	for (auto input_gate : mFlatInputGates[i]) {
-	  input_gate->OwnerSendsP1();
-	}
-      }
-    }
-    void InputP1Receives() {
-      for (std::size_t i = 0; i < mClients; i++) { // outer loop can be removed if needed for opt.
-	for (auto input_gate : mFlatInputGates[i]) {
-	  input_gate->P1Receives();
-	}
-      }
-    }
-    void RunInput() {
-      InputOwnerSendsP1();
-      InputP1Receives();
-    }
+    void InputOwnerSendsP1();
+    void InputP1Receives();
+    void RunInput();
 
     // Multiplications in the i-th layer
-    void MultP1Sends(std::size_t layer) { mMultLayers[layer].P1Sends(); }
-    void MultPartiesReceive(std::size_t layer) { mMultLayers[layer].PartiesReceive(); }
-    void MultPartiesSend(std::size_t layer) { mMultLayers[layer].PartiesSend(); }
-    void MultP1Receives(std::size_t layer) { mMultLayers[layer].P1Receives(); }
+    void MultP1Sends(std::size_t layer);
+    void MultPartiesReceive(std::size_t layer);
+    void MultPartiesSend(std::size_t layer);
+    void MultP1Receives(std::size_t layer);
 
-    void RunMult(std::size_t layer) {
-      MultP1Sends(layer);
-      MultPartiesReceive(layer);
-      MultPartiesSend(layer);
-      MultP1Receives(layer);
-    }
+    void RunMult(std::size_t layer);
 
     // Output layers
-    void OutputP1SendsMu() {
-      for (std::size_t i = 0; i < mClients; i++) {
-	for (auto output_gate : mFlatOutputGates[i]) {
-	  output_gate->P1SendsMu();
-	}
-      }
-    }
-    void OutputOwnerReceivesMu() {
-      for (std::size_t i = 0; i < mClients; i++) { // outer loop can be removed if needed for opt.
-	for (auto output_gate : mFlatOutputGates[i]) {
-	  output_gate->OwnerReceivesMu();
-	}
-      }
-    }
-    void RunOutput() {
-      OutputP1SendsMu();
-      OutputOwnerReceivesMu();
-    }
+    void OutputP1SendsMu();
+    void OutputOwnerReceivesMu();
+    void RunOutput();
 
-    void RunProtocol() {
-      RunInput();
-      for (std::size_t layer = 0; layer < mMultLayers.size(); layer++) {
-	RunMult(layer);
-      }
-      RunOutput();
-    }
+    void RunProtocol();
     
     // Returns a vector with the outputs after computation
-    std::vector<FF> GetOutputs() {
-      std::vector<FF> output;
-      output.reserve(mFlatOutputGates[mID].size());
-      for (auto output_gate : mFlatOutputGates[mID]) {
-	output.emplace_back(output_gate->GetValue());
-      }
-      return output;
-    }
+    std::vector<FF> GetOutputs();
 
     // Generates a synthetic circuit with the desired metrics
     static Circuit FromConfig(CircuitConfig config);

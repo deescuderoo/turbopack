@@ -14,7 +14,11 @@ set(TP_SOURCE_FILES
   src/tp/input_gate.cc
   src/tp/output_gate.cc
 
-  src/tp/circuits.cc
+  src/tp/circuits/building.cc
+  src/tp/circuits/cleartext.cc
+  src/tp/circuits/generic.cc
+  src/tp/circuits/online.cc
+  src/tp/circuits/offline.cc  
 )
 
 set(TEST_SOURCE_FILES
