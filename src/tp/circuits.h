@@ -9,10 +9,11 @@
 #include "tp/input_gate.h"
 #include "tp/output_gate.h"
 
+#include "tp/correlator.h"
+
 using VecMultGates = std::vector<std::shared_ptr<tp::MultGate>>;
 
 namespace tp {
-
   struct CircuitConfig {
     std::vector<std::size_t> inp_gates;
     std::vector<std::size_t> out_gates;
@@ -58,7 +59,7 @@ namespace tp {
     std::shared_ptr<OutputGate> Output(std::size_t owner_id, std::shared_ptr<Gate> output);
 
     // Consolidates the batches for the outputs
-    void CloseOutputs() { for (auto output_layer : mOutputLayers) output_layer.Close(); }
+    void CloseOutputs() { for (auto output_layer : mOutputLayers) output_layer.Close(); mIsClosed = true; }
 
     // Append addition gates
     std::shared_ptr<AddGate> Add(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
@@ -81,12 +82,17 @@ namespace tp {
     void LastLayer();
 
     void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
+      if ( !mIsClosed )
+	throw std::invalid_argument("Cannot set network without closing the circuit first");
       mNetwork = network;
       mID = id;
       mParties = network->Size();
+
       for (auto input_layer : mInputLayers) input_layer.SetNetwork(network, id);
       for (auto mult_layer : mMultLayers) mult_layer.SetNetwork(network, id);
       for (auto output_layer : mOutputLayers) output_layer.SetNetwork(network, id);
+
+      mIsNetworkSet = true;
     }
 
     // Used to fetch input and output gates
@@ -120,6 +126,79 @@ namespace tp {
 
     // DUMMY PREPROCESSING
     
+    // Populates each batch with dummy preprocessing 
+    void _DummyPrep(FF lambda) {
+      for (auto input_gate : mInputGates) {
+	input_gate->SetLambda(lambda);
+      }
+      for (std::size_t layer = 0; layer < GetDepth(); layer++) {
+	for (auto mult_gate : mFlatMultLayers[layer]) {
+	mult_gate->SetDummyLambda(lambda);
+	}
+      }
+      for (auto output_gate : mOutputGates) {
+	output_gate->GetDummyLambda(); //populate outputs and add wires
+      }
+
+      // Now update packed sharings
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  Vec lambda_A;
+	  lambda_A.Reserve(mBatchSize);
+	  for (std::size_t i = 0; i < mBatchSize; i++) {
+	    lambda_A.Emplace(input_batch->GetInputGate(i)->GetDummyLambda());
+	  }
+	  scl::PRG prg;
+	  auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	  Vec new_shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+	  input_batch->SetPreprocessing(new_shares[mID]);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  Vec lambda_A;
+	  lambda_A.Reserve(mBatchSize);
+	  for (std::size_t i = 0; i < mBatchSize; i++) {
+	    lambda_A.Emplace(output_batch->GetOutputGate(i)->GetDummyLambda());
+	  }
+	  scl::PRG prg;
+	  auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	  Vec new_shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+	  output_batch->SetPreprocessing(new_shares[mID]);
+	}
+      }
+      // Mults
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  Vec lambda_A;
+	  Vec lambda_B;
+	  Vec lambda_C;
+	  lambda_A.Reserve(mBatchSize);
+	  lambda_B.Reserve(mBatchSize);
+	  lambda_C.Reserve(mBatchSize);
+	  for (std::size_t i = 0; i < mBatchSize; i++) {
+	    lambda_A.Emplace(mult_batch->GetMultGate(i)->GetLeft()->GetDummyLambda());
+	    lambda_B.Emplace(mult_batch->GetMultGate(i)->GetRight()->GetDummyLambda());
+	    lambda_C.Emplace(mult_batch->GetMultGate(i)->GetDummyLambda());
+	  }
+	  scl::PRG prg;
+	  auto poly_A = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	  auto poly_B = scl::details::EvPolyFromSecretsAndDegree(lambda_B, mBatchSize-1, prg);
+	  auto poly_C = scl::details::EvPolyFromSecretsAndDegree(lambda_C, mBatchSize-1, prg);
+	  Vec new_shares_A = scl::details::SharesFromEvPoly(poly_A, mParties);
+	  Vec new_shares_B = scl::details::SharesFromEvPoly(poly_B, mParties);
+	  Vec new_shares_C = scl::details::SharesFromEvPoly(poly_C, mParties);
+
+	  mult_batch->SetPreprocessing(new_shares_A[mID], new_shares_B[mID], \
+				       new_shares_A[mID] * new_shares_B[mID] - new_shares_C[mID]);
+	}
+      }
+      
+      
+    }
+
     // Populates each batch with dummy preprocessing (all zeros)
     void _DummyPrep();
 
@@ -133,7 +212,169 @@ namespace tp {
     // gates based on the lambdas for multiplications and input gates
     void PrepFromDummyLambdas();
 
-    // PROTOCOLS
+    // FD PREPROCESSING
+
+    void GenCorrelator() {
+      if ( !mIsNetworkSet )
+	throw std::invalid_argument("Cannot set correlator without setting a network first");
+      
+      std::size_t n_ind_shares = GetNInputs() + GetSize();
+      std::size_t n_mult_batches = GetNMultBatches();
+      std::size_t n_inout_batches = GetNInputBatches() + GetNOutputBatches();
+
+      mCorrelator = Correlator(n_ind_shares, n_mult_batches, n_inout_batches, mBatchSize);
+      mCorrelator.SetNetwork(mNetwork, mID);
+      mCorrelator.PrecomputeEi();
+    }
+
+    void PopulateCorrelator() {
+      mCorrelator.Populate();
+    }
+
+    // The correlator is populated with dummy F.I. preprocessing
+    void PopulateDummyCorrelator(FF lambda) {
+      mCorrelator.PopulateDummy(lambda);
+    }
+
+    // The correlator is populated with dummy F.I. preprocessing
+    void PopulateDummyCorrelator() {
+      mCorrelator.PopulateDummy();
+    }
+
+    // Populates the mappings in the correlator so that the
+    // F.I. preprocessing is mapped to different gates/batches
+    void MapCorrToCircuit() {
+      // Individual shares
+      for (auto input_gate : mInputGates) {
+	mCorrelator.PopulateIndvShrs(input_gate);
+      }
+      for (std::size_t layer = 0; layer < GetDepth(); layer++) {
+	for (auto mult_gate : mFlatMultLayers[layer]) {
+	mCorrelator.PopulateIndvShrs(mult_gate);
+	}
+      }
+      for (auto add_gate : mAddGates) {
+	mCorrelator.PopulateIndvShrs(add_gate);
+      }
+      for (auto output_gate : mOutputGates) {
+	mCorrelator.PopulateIndvShrs(output_gate);
+      }
+
+      // auto iter = mCorrelator.mMapIndShrs.begin();
+      // while (iter != mCorrelator.mMapIndShrs.end()) {
+      // 	assert(iter->second != FF(0));
+      // 	++iter;
+      // }      
+
+// Input batches
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PopulateInputBatches(input_batch);
+	}
+      }
+      // Output batches
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PopulateOutputBatches(output_batch);
+	}
+      }
+      // Mult batches
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PopulateMultBatches(mult_batch);
+	}
+      }
+    }
+
+    // Prep inputs & outputs
+    void PrepPackedPartiesSendP1() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputPartiesSendP1(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputPartiesSendP1(output_batch);
+	}
+      }
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PrepMultPartiesSendP1(mult_batch);
+	}
+      }
+    }
+    void PrepPackedP1ReceivesAndSends() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  (void) input_batch;
+	  mCorrelator.PrepInputP1ReceivesAndSends();
+	}
+      }      
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  (void) output_batch;
+	  mCorrelator.PrepOutputP1ReceivesAndSends();
+	}
+      }      
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  (void) mult_batch;
+	  mCorrelator.PrepMultP1ReceivesAndSends();
+	}
+      }      
+    }
+    void PrepPackedPartiesReceive() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputPartiesReceive(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputPartiesReceive(output_batch);
+	}
+      }
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PrepMultPartiesReceive(mult_batch);
+	}
+      }
+    }
+
+    void PrepIOPartiesSendOwner() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputPartiesSendOwner(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputPartiesSendOwner(output_batch);
+	}
+      }
+    }
+
+    void PrepIOOwnerReceives() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputOwnerReceives(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputOwnerReceives(output_batch);
+	}
+      }
+    }
+    
+
+
+
+    void PrepOutputs();
+    void PrepMults();
+
+    // ONLINE PROTOCOL
 
     // Set inputs
     // Called separately by each party
@@ -171,6 +412,29 @@ namespace tp {
     std::size_t GetNOutputs() { return mOutputGates.size(); }
     std::size_t GetWidth() { return mWidth; }
     std::size_t GetSize() { return mSize; }
+    std::size_t GetNInputBatches() {
+      std::size_t sum(0);
+      for (auto input_layer : mInputLayers) {
+	sum += input_layer.GetSize();
+      }
+      return sum;
+    }
+    std::size_t GetNOutputBatches() {
+      std::size_t sum(0);
+      for (auto output_layer : mOutputLayers) {
+	sum += output_layer.GetSize();
+      }
+      return sum;
+    }
+    std::size_t GetNMultBatches() {
+      std::size_t sum(0);
+      for (auto mult_layer : mMultLayers) {
+	sum += mult_layer.GetSize();
+      }
+      return sum;
+    }
+
+    Correlator GetCorrelator() { return mCorrelator; }
 
   private:
     std::size_t mBatchSize;
@@ -192,6 +456,9 @@ namespace tp {
     std::vector<std::shared_ptr<OutputGate>> mOutputGates;
     std::vector<std::shared_ptr<AddGate>> mAddGates;
 
+    // Correlator (for FIPrep)
+    Correlator mCorrelator;
+
     // Metrics
     std::size_t mClients; // number of clients
     std::size_t mWidth=0;
@@ -201,9 +468,11 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    // Flags
+    bool mIsClosed;
+    bool mIsNetworkSet;
   };
-
-
 
 } // namespace tp
 

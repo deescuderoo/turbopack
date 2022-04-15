@@ -4,7 +4,6 @@
 #include <vector>
 #include <assert.h>
 
-#include "tp.h"
 #include "gate.h"
 
 namespace tp {
@@ -31,7 +30,7 @@ namespace tp {
       return mMu;
     };
 
-    void SetDummyLambda(FF lambda) {
+    void SetLambda(FF lambda) {
       mLambda = lambda;
       mLambdaSet = true;
     };
@@ -41,6 +40,18 @@ namespace tp {
 	throw std::invalid_argument("Lambda is not set in this input gate");
       return mLambda;
     };
+
+    void SetIndvShrLambda(FF indv_shr) {
+      mIndvShrLambdaC = indv_shr;
+      mIndvShrLambdaCSet = true;
+    };
+
+    FF GetIndvShrLambda() {
+      if ( !mIndvShrLambdaCSet )
+	throw std::invalid_argument("IndvShrLambda is not set in this input gate");
+      return mIndvShrLambdaC;
+    };
+
     
     FF GetClear() {
       if ( !mEvaluated )
@@ -94,10 +105,11 @@ namespace tp {
   // Used for padding batched inputs
   class PadInputGate : public InputGate {
   public:
-    PadInputGate(std::size_t owner_id) : InputGate(owner_id) {};
+    PadInputGate(std::size_t owner_id) : InputGate(owner_id) { mIsPadding = true; }
 
     FF GetMu() override { return FF(0); }
     FF GetDummyLambda() override { return FF(0); }
+    FF GetIndvShrLambda() override { return FF(0); }
 
   private:
   };
@@ -129,6 +141,11 @@ namespace tp {
     void _DummyPrep() {
       _DummyPrep(FF(0));
     }
+
+    std::size_t GetOwner() {
+      return mOwnerID;
+    };
+
                                             
     // Generates the preprocessing from the lambdas of the inputs
     void PrepFromDummyLambdas() {
@@ -167,6 +184,11 @@ namespace tp {
       mParties = network->Size();
       for (auto input_gate : mInputGatesPtrs) input_gate->SetNetwork(network, id);
     }
+
+    void SetPreprocessing(FF packed_shr_lambda) { mPackedShrLambda = packed_shr_lambda; }
+
+    FF GetPackedShrLambda() { return mPackedShrLambda; }
+
 
   private:
     // ID of the party who owns this batch
@@ -248,6 +270,9 @@ namespace tp {
       for (auto batch : mBatches) batch->GetClear();
     }
 
+    // Metrics
+    std::size_t GetSize() { return mBatches.size(); }
+
   private:
     std::size_t mOwnerID;
     vec<std::shared_ptr<InputBatch>> mBatches;
@@ -257,6 +282,8 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    friend class Circuit;
   };
 
 } // namespace tp

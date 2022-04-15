@@ -30,6 +30,9 @@ namespace tp {
       mLearned = true;
     }
 
+    // To get indv_shr lambda 
+    virtual FF GetIndvShrLambda() = 0; 
+
     // To get lambda when having fake preprocessing
     virtual FF GetDummyLambda() = 0; 
     
@@ -40,12 +43,15 @@ namespace tp {
     std::shared_ptr<Gate> GetLeft() { return mLeft; }
     std::shared_ptr<Gate> GetRight() { return mRight; }
 
+    bool IsPadding() { return mIsPadding; }
+
   protected:
     // Bool that indicates whether P1 learned Mu already
     bool mLearned = false;
 
     // Sharing of (lambda ... lambda)
     FF mIndvShrLambdaC = FF(0);
+    bool mIndvShrLambdaCSet = false;
 
     // mu = value - lambda
     // Learned by P1 in the online phase
@@ -64,6 +70,9 @@ namespace tp {
     bool mEvaluated = false;
     // Evaluation of the output wire of the gate
     FF mClear;
+
+    bool mIsPadding = false;
+
 
     friend class MultBatch;
   };  
@@ -91,6 +100,14 @@ namespace tp {
       }
       return mClear;
     }
+
+    FF GetIndvShrLambda() {
+      if ( !mIndvShrLambdaCSet ) {
+	mIndvShrLambdaC = mLeft->GetIndvShrLambda() + mRight->GetIndvShrLambda();
+	mIndvShrLambdaCSet = true;
+      }
+      return mIndvShrLambdaC;
+    }    
 
     FF GetDummyLambda() {
       if ( !mLambdaSet ) {

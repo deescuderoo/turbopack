@@ -154,7 +154,7 @@ TEST_CASE("Secure computation") {
     auto networks = scl::Network::CreateFullInMemory(n_parties);
     std::size_t n_clients = n_parties;
 
-    tp::FF lambda(0);
+    tp::FF lambda(649823289);
 
     std::vector<tp::Circuit> circuits;
     circuits.reserve(n_parties);
@@ -188,7 +188,7 @@ TEST_CASE("Secure computation") {
       c.CloseOutputs();
 
       c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
-      c._DummyPrep();
+      c._DummyPrep(lambda);
 
       circuits.emplace_back(c);
     }
@@ -256,15 +256,15 @@ TEST_CASE("Secure computation") {
       std::size_t n_parties = config.n_parties;
       auto networks = scl::Network::CreateFullInMemory(n_parties);
 
-      tp::FF lambda(0);
-
       std::vector<tp::Circuit> circuits;
       circuits.reserve(n_parties);
+
+      tp::FF lambda(-45298432);
 
       PARTY {
 	auto c = tp::Circuit::FromConfig(config);
 	c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
-	c._DummyPrep();
+	c._DummyPrep(lambda);
 	circuits.emplace_back(c);
       }
 

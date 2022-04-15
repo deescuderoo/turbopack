@@ -4,7 +4,6 @@
 #include <vector>
 #include <assert.h>
 
-#include "tp.h"
 #include "gate.h"
 
 namespace tp {
@@ -14,8 +13,6 @@ namespace tp {
     MultGate(std::shared_ptr<Gate> left, std::shared_ptr<Gate> right) {
       mLeft = left;
       mRight = right;
-      // TODO sample at random, interactively. Get from correlator
-      mIndvShrLambdaC = FF(0);
     };
 
     FF GetMu() {
@@ -37,6 +34,17 @@ namespace tp {
       return mLambda;
     };
 
+    void SetIndvShrLambda(FF indv_shr) {
+      mIndvShrLambdaC = indv_shr;
+      mIndvShrLambdaCSet = true;
+    };
+
+    FF GetIndvShrLambda() {
+      if ( !mIndvShrLambdaCSet )
+	throw std::invalid_argument("IndvShrLambda is not set in this multiplication gate");
+      return mIndvShrLambdaC;
+    };
+
     FF GetClear() {
       if ( !mEvaluated ) {
 	mClear = mLeft->GetClear() * mRight->GetClear();
@@ -50,7 +58,7 @@ namespace tp {
   // Used for padding batched multiplications
   class PadMultGate : public MultGate {
   public:
-    PadMultGate() : MultGate() {};
+    PadMultGate() : MultGate() { mIsPadding = true; };
 
     FF GetMu() override { return FF(0); }
     FF GetDummyLambda() override { return FF(0); }
@@ -159,6 +167,19 @@ namespace tp {
     // of the outputs in the batch, and updates these accordingly
     void P1Receives();
 
+    void RunProtocol() {
+      P1Sends();
+      PartiesReceive();
+      PartiesSend();
+      P1Receives();}
+
+    void SetPreprocessing(FF shr_lambda_A, FF shr_lambda_B, FF shr_delta_C) {
+      mPackedShrLambdaA = shr_lambda_A;
+      mPackedShrLambdaB = shr_lambda_B;
+      mPackedShrDeltaC = shr_delta_C;
+    }
+
+
   private:
     std::size_t mBatchSize;
 
@@ -253,6 +274,9 @@ namespace tp {
     void PartiesReceive() { for (auto batch : mBatches) batch->PartiesReceive(); }
     void PartiesSend() { for (auto batch : mBatches) batch->PartiesSend(); }
     void P1Receives() { for (auto batch : mBatches) batch->P1Receives(); }
+    
+    // Metrics
+    std::size_t GetSize() { return mBatches.size(); }
 
   private:
     vec<std::shared_ptr<MultBatch>> mBatches;
@@ -262,6 +286,8 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    friend class Circuit;
   };
 } // namespace tp
 

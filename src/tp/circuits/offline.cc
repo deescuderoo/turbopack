@@ -18,7 +18,7 @@ namespace tp {
       }
       // Output wires of input gates
       for (auto input_gate : mInputGates) {
-	input_gate->SetDummyLambda(lambda);
+	input_gate->SetLambda(lambda);
       }
     }
 

@@ -19,6 +19,9 @@ set(TP_SOURCE_FILES
   src/tp/circuits/generic.cc
   src/tp/circuits/online.cc
   src/tp/circuits/offline.cc  
+
+  src/tp/correlator.cc  
+
 )
 
 set(TEST_SOURCE_FILES

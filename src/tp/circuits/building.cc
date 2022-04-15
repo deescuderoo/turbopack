@@ -22,6 +22,9 @@ namespace tp {
     auto first_layer = MultLayer(mBatchSize);
     mMultLayers.emplace_back(first_layer);
     mFlatMultLayers.emplace_back(VecMultGates());
+
+    mIsClosed = false;
+    mIsNetworkSet = false;
   }
 
   std::shared_ptr<InputGate> Circuit::Input(std::size_t owner_id) {

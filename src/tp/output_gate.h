@@ -4,7 +4,6 @@
 #include <vector>
 #include <assert.h>
 
-#include "tp.h"
 #include "gate.h"
 
 namespace tp {
@@ -38,6 +37,20 @@ namespace tp {
       if ( !mLambdaSet ) {
 	mLambda = mLeft->GetDummyLambda();
 	mLambdaSet = true;
+      }
+      return mLambda;
+    }    
+
+    void SetLambda(FF lambda) {
+      mLambda = lambda;
+      mLambdaSet = true;
+    };
+
+
+    FF GetIndvShrLambda() {
+      if ( !mIndvShrLambdaCSet ) {
+	mIndvShrLambdaC = mLeft->GetIndvShrLambda();
+	mIndvShrLambdaCSet = true;
       }
       return mLambda;
     }    
@@ -101,7 +114,7 @@ namespace tp {
   // Used for padding batched outputs
   class PadOutputGate : public OutputGate {
   public:
-    PadOutputGate(std::size_t owner_id) : OutputGate(owner_id) {};
+    PadOutputGate(std::size_t owner_id) : OutputGate(owner_id) { mIsPadding = true; }
 
     FF GetMu() override { return FF(0); }
     FF GetDummyLambda() override { return FF(0); }
@@ -139,6 +152,11 @@ namespace tp {
       _DummyPrep(FF(0));
     }
 
+    std::size_t GetOwner() {
+      return mOwnerID;
+    };
+
+
     // Generates the preprocessing from the lambdas of the inputs
     void PrepFromDummyLambdas() {
       Vec lambda;
@@ -174,6 +192,10 @@ namespace tp {
       mParties = network->Size();
       for (auto output_gate : mOutputGatesPtrs) output_gate->SetNetwork(network, id);
     }
+
+    void SetPreprocessing(FF packed_shr_lambda) { mPackedShrLambda = packed_shr_lambda; }
+
+    FF GetPackedShrLambda() { return mPackedShrLambda; }
 
   private:
     // ID of the party who owns this batch
@@ -255,6 +277,9 @@ namespace tp {
       for (auto batch : mBatches) batch->GetClear();
     }
 
+    // Metrics
+    std::size_t GetSize() { return mBatches.size(); }
+
   private:
     std::size_t mOwnerID;
     vec<std::shared_ptr<OutputBatch>> mBatches;
@@ -264,6 +289,8 @@ namespace tp {
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
+
+    friend class Circuit;
   };
 
 } // namespace tp
