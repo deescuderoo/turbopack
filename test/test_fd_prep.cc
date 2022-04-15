@@ -147,9 +147,9 @@ TEST_CASE("FD from FI") {
     }
 
     // INPUT+OUTPUT+MULT 
-	 PARTY { circuits[i].PrepPackedPartiesSendP1(); }
-    PARTY { circuits[i].PrepPackedP1ReceivesAndSends(); }
-    PARTY { circuits[i].PrepPackedPartiesReceive(); }
+	 PARTY { circuits[i].PrepMultPartiesSendP1(); }
+    PARTY { circuits[i].PrepMultP1ReceivesAndSends(); }
+    PARTY { circuits[i].PrepMultPartiesReceive(); }
     PARTY { circuits[i].PrepIOPartiesSendOwner(); }
     PARTY { circuits[i].PrepIOOwnerReceives(); }
 
@@ -236,9 +236,10 @@ TEST_CASE("FD from FI") {
     }
 
     // INPUT+OUTPUT+MULT 
-	 PARTY { circuits[i].PrepPackedPartiesSendP1(); }
-    PARTY { circuits[i].PrepPackedP1ReceivesAndSends(); }
-    PARTY { circuits[i].PrepPackedPartiesReceive(); }
+	 PARTY { circuits[i].PrepMultPartiesSendP1(); }
+    PARTY { circuits[i].PrepMultP1ReceivesAndSends(); }
+    PARTY { circuits[i].PrepMultPartiesReceive(); }
+    // Can be run inline with the above
     PARTY { circuits[i].PrepIOPartiesSendOwner(); }
     PARTY { circuits[i].PrepIOOwnerReceives(); }
 

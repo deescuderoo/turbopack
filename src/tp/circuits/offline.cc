@@ -41,4 +41,107 @@ namespace tp {
       for (auto output_layer : mOutputLayers) output_layer.PrepFromDummyLambdas();
       for (auto mult_layer : mMultLayers) mult_layer.PrepFromDummyLambdas();
     }
+
+    void Circuit::GenCorrelator() {
+      if ( !mIsNetworkSet )
+	throw std::invalid_argument("Cannot set correlator without setting a network first");
+      
+      std::size_t n_ind_shares = GetNInputs() + GetSize();
+      std::size_t n_mult_batches = GetNMultBatches();
+      std::size_t n_inout_batches = GetNInputBatches() + GetNOutputBatches();
+
+      mCorrelator = Correlator(n_ind_shares, n_mult_batches, n_inout_batches, mBatchSize);
+      mCorrelator.SetNetwork(mNetwork, mID);
+      mCorrelator.PrecomputeEi();
+    }
+
+    // Populates the mappings in the correlator so that the
+    // F.I. preprocessing is mapped to different gates/batches
+    void Circuit::MapCorrToCircuit() {
+      // Individual shares
+      for (auto input_gate : mInputGates) {
+	mCorrelator.PopulateIndvShrs(input_gate);
+      }
+      for (std::size_t layer = 0; layer < GetDepth(); layer++) {
+	for (auto mult_gate : mFlatMultLayers[layer]) {
+	  mCorrelator.PopulateIndvShrs(mult_gate);
+	}
+      }
+      for (auto add_gate : mAddGates) {
+	mCorrelator.PopulateIndvShrs(add_gate);
+      }
+      for (auto output_gate : mOutputGates) {
+	mCorrelator.PopulateIndvShrs(output_gate);
+      }
+
+      // Input batches
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PopulateInputBatches(input_batch);
+	}
+      }
+      // Output batches
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PopulateOutputBatches(output_batch);
+	}
+      }
+      // Mult batches
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PopulateMultBatches(mult_batch);
+	}
+      }
+    }
+
+    // Prep inputs & outputs
+    void Circuit::PrepMultPartiesSendP1() {
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PrepMultPartiesSendP1(mult_batch);
+	}
+      }
+    }
+    void Circuit::PrepMultP1ReceivesAndSends() {
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  (void) mult_batch;
+	  mCorrelator.PrepMultP1ReceivesAndSends();
+	}
+      }      
+    }
+    void Circuit::PrepMultPartiesReceive() {
+      for (auto mult_layer : mMultLayers) {
+	for (auto mult_batch : mult_layer.mBatches) {
+	  mCorrelator.PrepMultPartiesReceive(mult_batch);
+	}
+      }
+    }
+
+    void Circuit::PrepIOPartiesSendOwner() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputPartiesSendOwner(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputPartiesSendOwner(output_batch);
+	}
+      }
+    }
+
+    void Circuit::PrepIOOwnerReceives() {
+      for (auto input_layer : mInputLayers) {
+	for (auto input_batch : input_layer.mBatches) {
+	  mCorrelator.PrepInputOwnerReceives(input_batch);
+	}
+      }
+      for (auto output_layer : mOutputLayers) {
+	for (auto output_batch : output_layer.mBatches) {
+	  mCorrelator.PrepOutputOwnerReceives(output_batch);
+	}
+      }
+    }
+  
 } // namespace tp
