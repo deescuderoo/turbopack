@@ -431,4 +431,88 @@ TEST_CASE("FD from Real FI") {
     tp::FF real = (X+Y)*X + (X+Y)*Y + (U+V)*U + (U+V)*V;
     REQUIRE(circuits[0].GetOutputGate(0,0)->GetValue() == real);
   }
+
+  SECTION("Generic Circuit")     {
+    std::size_t threshold = 6; // has to be even
+    std::size_t batch_size = (threshold + 2)/2;
+    std::size_t n_parties = threshold + 2*(batch_size - 1) + 1;
+
+    tp::CircuitConfig config;
+    config.n_parties = n_parties;
+    config.inp_gates = std::vector<std::size_t>(n_parties, 0);
+    config.inp_gates[0] = 2;
+    config.out_gates = std::vector<std::size_t>(n_parties, 0);
+    config.out_gates[0] = 2;
+    config.width = 100;
+    config.depth = 3;
+    config.batch_size = batch_size;
+	  
+    auto networks = scl::Network::CreateFullInMemory(n_parties);
+
+    std::vector<tp::Circuit> circuits;
+    circuits.reserve(n_parties);
+
+    PARTY {
+      auto c = tp::Circuit::FromConfig(config);
+      c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
+
+      c.GenCorrelator();
+      c.SetThreshold(threshold);
+
+      circuits.emplace_back(c);
+    }
+
+    PARTY {
+      circuits[i].GenIndShrsPartiesSend();
+      circuits[i].GenUnpackedShrPartiesSend();
+      circuits[i].GenZeroPartiesSend(); 
+      circuits[i].GenZeroForProdPartiesSend();
+    }
+
+    PARTY {
+      circuits[i].GenIndShrsPartiesReceive();
+      circuits[i].GenUnpackedShrPartiesReceive();
+      circuits[i].GenZeroPartiesReceive(); 
+      circuits[i].GenZeroForProdPartiesReceive();
+    }
+
+    PARTY { circuits[i].GenProdPartiesSendP1(); }
+    PARTY { circuits[i].GenProdP1ReceivesAndSends(); }
+    PARTY { circuits[i].GenProdPartiesReceive(); }
+
+    PARTY { circuits[i].MapCorrToCircuit(); }
+
+    // INPUT+OUTPUT+MULT 
+	 PARTY { circuits[i].PrepMultPartiesSendP1(); }
+    PARTY { circuits[i].PrepMultP1ReceivesAndSends(); }
+    PARTY { circuits[i].PrepMultPartiesReceive(); }
+    // Can be run inline with the above
+    PARTY { circuits[i].PrepIOPartiesSendOwner(); }
+    PARTY { circuits[i].PrepIOOwnerReceives(); }
+
+
+    std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
+    circuits[0].SetClearInputsFlat(inputs);
+    auto result = circuits[0].GetClearOutputsFlat();
+    circuits[0].SetInputs(inputs);
+
+    // INPUT
+    PARTY { circuits[i].InputOwnerSendsP1(); }
+    PARTY { circuits[i].InputP1Receives(); }
+
+    // MULT
+    for (std::size_t layer = 0; layer < config.depth; layer++) {
+      PARTY { circuits[i].MultP1Sends(layer); }
+      PARTY { circuits[i].MultPartiesReceive(layer); }
+      PARTY { circuits[i].MultPartiesSend(layer); }
+      PARTY { circuits[i].MultP1Receives(layer); }
+    }
+
+    // OUTPUT
+    PARTY { circuits[i].OutputP1SendsMu(); }
+    PARTY { circuits[i].OutputOwnerReceivesMu(); }
+
+    // Check output
+    REQUIRE(circuits[0].GetOutputs() == result);
+  }  
 }
