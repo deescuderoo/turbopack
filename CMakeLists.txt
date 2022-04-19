@@ -21,6 +21,7 @@ set(TP_SOURCE_FILES
   src/tp/circuits/offline.cc  
 
   src/tp/correlator.cc  
+  src/tp/fi_prep.cc  
 
 )
 

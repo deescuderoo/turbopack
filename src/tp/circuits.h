@@ -216,23 +216,50 @@ namespace tp {
 
     void GenCorrelator();
 
-    void PopulateCorrelator() {
-      mCorrelator.Populate();
-    }
+    // void PopulateCorrelator() {
+    //   mCorrelator.Populate();
+    // }
 
     // The correlator is populated with dummy F.I. preprocessing
+    void GenIndShrsDummy(FF lambda) {
+      mCorrelator.GenIndShrsDummy(lambda);
+    }
+    void GenMultBatchDummy() {
+      mCorrelator.GenMultBatchDummy();
+    }
+    void GenIOBatchDummy() {
+      mCorrelator.GenIOBatchDummy();
+    }
+
     void PopulateDummyCorrelator(FF lambda) {
-      mCorrelator.PopulateDummy(lambda);
+      mCorrelator.GenPrepDummy(lambda);
     }
 
     // The correlator is populated with dummy F.I. preprocessing
     void PopulateDummyCorrelator() {
-      mCorrelator.PopulateDummy();
+      mCorrelator.GenPrepDummy();
     }
 
     // Populates the mappings in the correlator so that the
     // F.I. preprocessing is mapped to different gates/batches
     void MapCorrToCircuit();
+
+    // POPULATE THE CORRELATOR
+    void GenIndShrsPartiesSend() { mCorrelator.GenIndShrsPartiesSend(); }
+    void GenIndShrsPartiesReceive() { mCorrelator.GenIndShrsPartiesReceive(); }
+
+    void GenUnpackedShrPartiesSend() { mCorrelator.GenUnpackedShrPartiesSend(); }
+    void GenUnpackedShrPartiesReceive() { mCorrelator.GenUnpackedShrPartiesReceive(); }
+
+    void GenZeroPartiesSend() { mCorrelator.GenZeroPartiesSend(); }
+    void GenZeroPartiesReceive() { mCorrelator.GenZeroPartiesReceive(); }
+
+    void GenZeroForProdPartiesSend() { mCorrelator.GenZeroForProdPartiesSend(); }
+    void GenZeroForProdPartiesReceive() { mCorrelator.GenZeroForProdPartiesReceive(); }
+
+    void GenProdPartiesSendP1() { mCorrelator.GenProdPartiesSendP1(); }
+    void GenProdP1ReceivesAndSends() { mCorrelator.GenProdP1ReceivesAndSends(); }
+    void GenProdPartiesReceive() { mCorrelator.GenProdPartiesReceive(); }
 
     // Prep inputs & outputs
     void PrepMultPartiesSendP1();
@@ -307,6 +334,12 @@ namespace tp {
     }
 
     Correlator GetCorrelator() { return mCorrelator; }
+
+    void SetThreshold(std::size_t threshold) {
+      mCorrelator.SetThreshold(threshold);
+      mCorrelator.PrecomputeVandermonde();
+    }
+
 
   private:
     std::size_t mBatchSize;

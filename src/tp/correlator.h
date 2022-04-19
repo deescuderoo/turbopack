@@ -63,18 +63,26 @@ namespace tp {
       mIOBatchFIPrep.reserve(mNInOutBatches);
     }
 
-    void PopulateDummy(FF lambda) {
+    // Generates dummy F.I. preprocessing
+    void GenIndShrsDummy(FF lambda) {
       mIndShrs = std::vector<FF>(mNIndShrs, lambda);
-      mMultBatchFIPrep = std::vector<MultBatchFIPrep>(mNMultBatches, MultBatchFIPrep());
+    }
+    void GenMultBatchDummy() {
+      mMultBatchFIPrep = std::vector<MultBatchFIPrep>(mNMultBatches, MultBatchFIPrep());      
+    }
+    void GenIOBatchDummy() {
       mIOBatchFIPrep = std::vector<IOBatchFIPrep>(mNInOutBatches, IOBatchFIPrep());
     }
 
-    void PopulateDummy() {
-      PopulateDummy(FF(0));
+    void GenPrepDummy(FF lambda) {
+      GenIndShrsDummy(lambda);
+      GenMultBatchDummy();
+      GenIOBatchDummy();
     }
 
-    // TODO actual protocol to get the prep
-    void Populate();
+    void GenPrepDummy() {
+      GenPrepDummy(FF(0));
+    }
 
     void SetNetwork(std::shared_ptr<scl::Network> network, std::size_t id) {
       mNetwork = network;
@@ -82,6 +90,37 @@ namespace tp {
       mParties = network->Size();
     }
 
+    void SetThreshold(std::size_t threshold) {
+      if ( mParties != threshold + 2*(mBatchSize - 1) + 1 )
+	throw std::invalid_argument("It must hold that n = t + 2(k-1) + 1");
+      if ( mParties <= 2*threshold )
+	throw std::invalid_argument("It must hold that t < n/2");
+      mThreshold = threshold;
+    }
+
+    // GENERATE F.I. PREPROCESSING
+
+    void GenIndShrsPartiesSend();
+    void GenIndShrsPartiesReceive();
+
+    void GenUnpackedShrPartiesSend();
+    void GenUnpackedShrPartiesReceive();
+
+    // Zero shares. Used for:
+    // Inputs, Outputs, 3xMult
+    void GenZeroPartiesSend();
+    void GenZeroPartiesReceive();
+
+    // Zero shares for taking a product
+    void GenZeroForProdPartiesSend();
+    void GenZeroForProdPartiesReceive();
+
+    // Execute the products
+    void GenProdPartiesSendP1();
+    void GenProdP1ReceivesAndSends();
+    void GenProdPartiesReceive();
+
+    // Mapping gates to preprocessed data
     void PopulateIndvShrs(std::shared_ptr<MultGate> gate) {
       if ( !gate->IsPadding() ) mMapIndShrs[gate] = mIndShrs[mCTRIndShrs++];
     }
@@ -108,6 +147,8 @@ namespace tp {
       mMapOutputBatch[output_batch] = mIOBatchFIPrep[mCTRInOutBatches++];
     }
 
+    // Generate FD Prep from FI Prep
+    
     // PREP INPUT BATCH
     void PrepInputPartiesSendOwner(std::shared_ptr<InputBatch> input_batch);
     
@@ -139,6 +180,20 @@ namespace tp {
       }
     }
 
+    // Populate vandermonde matrix
+    void PrecomputeVandermonde() {
+      mVandermonde.reserve(mParties);
+      for (std::size_t i = 0; i < mParties; i++) {
+	mVandermonde.emplace_back(std::vector<FF>());
+	mVandermonde[i].reserve(mThreshold + 1);
+	FF entry(1);
+	for (std::size_t j = 0; j < mThreshold + 1; ++j) {
+	  mVandermonde[i].emplace_back(entry);
+	  entry *= FF(i);
+	}
+      }
+    }
+
     // Maps
     std::map<std::shared_ptr<Gate>, FF> mMapIndShrs;
     std::map<std::shared_ptr<MultBatch>, MultBatchFIPrep> mMapMultBatch;
@@ -161,8 +216,10 @@ namespace tp {
 
     // Shares of e_i for current party
     std::vector<FF> mSharesOfEi; // len = batchsize
+    std::vector<std::vector<FF>> mVandermonde; // mParties x (mThreshold + 1)
  
-   // SHARINGS
+
+    // SHARINGS
 
     // Individual sharings
     std::vector<FF> mIndShrs;
@@ -173,15 +230,24 @@ namespace tp {
     // Input & Output batches
     std::vector<IOBatchFIPrep> mIOBatchFIPrep;
 
+    // HELPERS TO GET THE F.I. PREP
+    std::vector<std::vector<FF>> mUnpackedShrsA; // idx = packed index
+    std::vector<std::vector<FF>> mUnpackedShrsB; // idx = packed index
+    std::vector<std::vector<FF>> mUnpackedShrsMask; // idx = packed index
+    std::vector<std::vector<FF>> mZeroProdShrs; // idx = packed index
+
+    
 
     // NETWORK-RELATED
     std::shared_ptr<scl::Network> mNetwork;
     std::size_t mID;
     std::size_t mParties;
 
-    scl::PRG mPRG;
+    std::size_t mThreshold;
 
+    scl::PRG mPRG;
   };
+
 } // namespace tp
 
 #endif  // CORRELATOR_H

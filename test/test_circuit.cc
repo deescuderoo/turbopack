@@ -72,13 +72,18 @@ TEST_CASE("Cleartext") {
 
   SECTION("Artificial circuit") 
     {
+      std::size_t batch_size = 8;
+      std::size_t n_parties = 4*batch_size - 3;
+
       tp::CircuitConfig config;
-      config.n_parties = 3;
-      config.inp_gates = {2,0,0};
-      config.out_gates = {2,0,0};
+      config.n_parties = n_parties;
+      config.inp_gates = std::vector<std::size_t>(n_parties, 0);
+      config.inp_gates[0] = 2;
+      config.out_gates = std::vector<std::size_t>(n_parties, 0);
+      config.out_gates[0] = 2;
       config.width = 100;
       config.depth = 2;
-      config.batch_size = 2;
+      config.batch_size = batch_size;
 	  
       auto circuit = tp::Circuit::FromConfig(config);
 
@@ -245,15 +250,19 @@ TEST_CASE("Secure computation") {
   
   SECTION("Artificial circuit") 
     {
+      std::size_t batch_size = 2;
+      std::size_t n_parties = 4*batch_size - 3;
+
       tp::CircuitConfig config;
-      config.n_parties = 3;
-      config.inp_gates = {2,0,0};
-      config.out_gates = {2,0,0};
+      config.n_parties = n_parties;
+      config.inp_gates = std::vector<std::size_t>(n_parties, 0);
+      config.inp_gates[0] = 2;
+      config.out_gates = std::vector<std::size_t>(n_parties, 0);
+      config.out_gates[0] = 2;
       config.width = 100;
       config.depth = 2;
-      config.batch_size = 2;
+      config.batch_size = batch_size;
 	  
-      std::size_t n_parties = config.n_parties;
       auto networks = scl::Network::CreateFullInMemory(n_parties);
 
       std::vector<tp::Circuit> circuits;
