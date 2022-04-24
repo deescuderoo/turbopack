@@ -23,6 +23,7 @@ set(TP_SOURCE_FILES
   src/tp/correlator.cc  
   src/tp/fi_prep.cc  
 
+  src/tp/atlas.cc  
 )
 
 set(TEST_SOURCE_FILES
@@ -34,6 +35,8 @@ set(TEST_SOURCE_FILES
   test/test_output.cc
   test/test_mult.cc
   test/test_fd_prep.cc
+
+  test/test_atlas.cc
 )
 
 

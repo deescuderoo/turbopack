@@ -44,7 +44,7 @@ namespace tp {
     void SetLambda(FF lambda) {
       mLambda = lambda;
       mLambdaSet = true;
-    };
+    }
 
 
     FF GetIndvShrLambda() {
@@ -53,6 +53,14 @@ namespace tp {
 	mIndvShrLambdaCSet = true;
       }
       return mLambda;
+    }    
+
+    FF GetAtlasShare() {
+      if ( !mAtlasSet ) {
+	mAtlasShare = mLeft->GetAtlasShare();
+	mAtlasSet = true;
+      }
+      return mAtlasShare;
     }    
 
     FF GetClear() {

@@ -12,46 +12,51 @@ namespace tp {
     InputGate(std::size_t owner_id) : mOwnerID(owner_id) {
       // TODO sample at random, interactively. Get from correlator
       mIndvShrLambdaC = FF(0);
-    };
+    }
 
     // Set cleartext inputs, for the case of cleartext evaluation
     void ClearInput(FF input) {
       mClear = input;
       mEvaluated = true;
-    };
+    }
 
     std::size_t GetOwner() {
       return mOwnerID;
-    };
+    }
 
     FF GetMu() {
       if ( !mLearned )
 	throw std::invalid_argument("P1 hasn't learned this value yet");
       return mMu;
-    };
+    }
 
     void SetLambda(FF lambda) {
       mLambda = lambda;
       mLambdaSet = true;
-    };
+    }
 
     FF GetDummyLambda() {
       if ( !mLambdaSet )
 	throw std::invalid_argument("Lambda is not set in this input gate");
       return mLambda;
-    };
+    }
 
     void SetIndvShrLambda(FF indv_shr) {
       mIndvShrLambdaC = indv_shr;
       mIndvShrLambdaCSet = true;
-    };
+    }
 
     FF GetIndvShrLambda() {
       if ( !mIndvShrLambdaCSet )
 	throw std::invalid_argument("IndvShrLambda is not set in this input gate");
       return mIndvShrLambdaC;
-    };
+    }
 
+    FF GetAtlasShare() {
+      if ( !mAtlasSet )
+	throw std::invalid_argument("Atlas shares is not set in this input gate");
+      return mAtlasShare;
+    }
     
     FF GetClear() {
       if ( !mEvaluated )
@@ -87,6 +92,8 @@ namespace tp {
 	mLearned = true;
       }
     }
+
+    FF GetValue() { return mValue; }
 
   private:
     // ID of the party who owns this gate

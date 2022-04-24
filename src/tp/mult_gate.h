@@ -37,13 +37,19 @@ namespace tp {
     void SetIndvShrLambda(FF indv_shr) {
       mIndvShrLambdaC = indv_shr;
       mIndvShrLambdaCSet = true;
-    };
+    }
 
     FF GetIndvShrLambda() {
       if ( !mIndvShrLambdaCSet )
 	throw std::invalid_argument("IndvShrLambda is not set in this multiplication gate");
       return mIndvShrLambdaC;
-    };
+    }
+
+    FF GetAtlasShare() {
+      if ( !mAtlasSet )
+	throw std::invalid_argument("Atlas shares is not set in this multiplication gate");
+      return mAtlasShare;
+    }
 
     FF GetClear() {
       if ( !mEvaluated ) {
@@ -51,7 +57,8 @@ namespace tp {
 	mEvaluated = true;
       }
       return mClear;
-    };
+    }
+
   private:
   };
 
@@ -171,7 +178,8 @@ namespace tp {
       P1Sends();
       PartiesReceive();
       PartiesSend();
-      P1Receives();}
+      P1Receives();
+    }
 
     void SetPreprocessing(FF shr_lambda_A, FF shr_lambda_B, FF shr_delta_C) {
       mPackedShrLambdaA = shr_lambda_A;

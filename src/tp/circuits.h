@@ -377,6 +377,8 @@ namespace tp {
     // Flags
     bool mIsClosed;
     bool mIsNetworkSet;
+
+    friend class Atlas;
   };
 
 } // namespace tp

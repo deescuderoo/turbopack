@@ -57,8 +57,8 @@ TEST_CASE("Cleartext") {
     REQUIRE(!(uPv->IsEvaluated()));
 
     // Testing GetClear()
-    std::vector<tp::FF> inputs{X, U, Y, V}; // watch out for the ordering!
-    c.SetClearInputsFlat(inputs);
+    // std::vector<tp::FF> inputs{X, U, Y, V}; // watch out for the ordering!
+    // c.SetClearInputsFlat(inputs);
     auto result = c.GetClearOutputsFlat()[0];
 
     // Check that the call above populates upper gates
