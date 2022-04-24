@@ -247,9 +247,21 @@ namespace tp {
 	  // 2. Reconstruct
 	  auto secret = SecretFromPointAndShares(FF(-pack_idx), recv_shares);
 
-	  // 3. Send back
-	  for (std::size_t parties = 0; parties < mParties; parties++) {
-	    mNetwork->Party(parties)->Send(secret);
+	  // 3. Send back (w. optimization of zero-shares)
+	  Vec y_points;
+	  y_points.Reserve(mThreshold+1);
+	  y_points.Emplace(secret);
+	  for (std::size_t i = 1; i < mThreshold+1; ++i) y_points.Emplace(FF(0));
+
+	  Vec x_points;
+	  x_points.Reserve(mThreshold+1);
+	  x_points.Emplace(FF(-pack_idx));
+	  for (std::size_t i = 1; i < mThreshold+1; ++i) x_points.Emplace(FF(i));
+
+	  auto poly = scl::details::EvPolynomial<FF>(x_points, y_points);
+	  auto shares_to_send = scl::details::SharesFromEvPoly(poly, mParties);
+	  for ( std::size_t i = mThreshold; i < mParties; i++ ) {
+	    mNetwork->Party(i)->Send(shares_to_send[i]);
 	  }
 	}
       }
@@ -264,10 +276,14 @@ namespace tp {
       shares_prod.emplace_back(std::vector<FF>());
       shares_prod[pack_idx].reserve(mNMultBatches);
       for ( std::size_t batch = 0; batch < mNMultBatches; batch++ ) {
-	// 1. Receive secret
 	FF recv;
+	if (mID >= mThreshold) {
+	// 1. Receive secret
 	mNetwork->Party(0)->Recv(recv);
-
+	} else {
+	  recv = FF(0);
+	}
+	       
 	// 2. Compute shares
 	FF shr_prod = recv - mUnpackedShrsMask[pack_idx][batch];
 	shares_prod[pack_idx].emplace_back(shr_prod);
