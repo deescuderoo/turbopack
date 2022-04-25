@@ -13,8 +13,8 @@ namespace tp {
       throw std::invalid_argument("Total number of inputs does not divide width");
     if ( n_inputs % 2 != 0 )
       throw std::invalid_argument("Number of inputs is not even");
-    if ( config.batch_size % 2 != 0 )
-      throw std::invalid_argument("Batch size is not even");
+    // if ( config.batch_size % 2 != 0 )
+    //   throw std::invalid_argument("Batch size is not even");
 
     Circuit circuit(config.n_parties, config.batch_size);
 

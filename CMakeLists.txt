@@ -5,6 +5,7 @@ project( turbo-packing DESCRIPTION "Turbo-Packing" )
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -pedantic -Werror -std=gnu++17")
 
+set(EXP_COMP "exp_comp.x")
 
 set(TEST_EXECUTABLE "tests.x")
 
@@ -52,3 +53,9 @@ target_include_directories(${TEST_EXECUTABLE} PUBLIC
 set( libscl "${CMAKE_SOURCE_DIR}/secure-computation-library/build/libscl.so.0.3" )
 target_link_libraries( ${TEST_EXECUTABLE} Catch2::Catch2 pthread ${libscl})
 # target_link_libraries( ${TEST_EXECUTABLE} Catch2::Catch2 pthread scl)
+
+add_executable(${EXP_COMP} experiments/comparison.cc ${TP_SOURCE_FILES})
+target_include_directories(${EXP_COMP} PUBLIC
+  "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
+  "${CMAKE_SOURCE_DIR}/src")
+target_link_libraries(${EXP_COMP} pthread ${libscl})

@@ -72,7 +72,7 @@ TEST_CASE("Cleartext") {
 
   SECTION("Artificial circuit") 
     {
-      std::size_t batch_size = 8;
+      std::size_t batch_size = 7;
       std::size_t n_parties = 4*batch_size - 3;
 
       tp::CircuitConfig config;
