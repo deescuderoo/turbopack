@@ -7,10 +7,11 @@ program=$1
 n=$2
 s=$3
 d=$4
+tag=$5
 
 usage () {
     echo $@
-    echo "usage: $0 [program name] [N] [size] [depth]"
+    echo "usage: $0 [program name] [N] [size] [depth] [tag]"
     exit 0
 }
 
@@ -26,11 +27,11 @@ echo "running: $program $n i $s $d"
 
 logext=$(basename $program .x)
 
-logdir="logs/logs_${logext}_${n}_${m}_$(date +%s)"
+logdir="logs/logs_${logext}_${n}_${s}_${d}_${tag}"
 
 mkdir -p $logdir
 
-( ./$program $n 0 $s $d ) &
+( ./$program $n 0 $s $d ) | tee "${logdir}/party_0.log" &
 pidzero=$!
 
 # echo -n "starting "
