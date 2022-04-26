@@ -257,6 +257,20 @@ namespace tp {
     void GenZeroForProdPartiesSend() { mCorrelator.GenZeroForProdPartiesSend(); }
     void GenZeroForProdPartiesReceive() { mCorrelator.GenZeroForProdPartiesReceive(); }
 
+    void FIPrepSend() {
+      GenIndShrsPartiesSend();
+      GenUnpackedShrPartiesSend();
+      GenZeroPartiesSend();
+      GenZeroForProdPartiesSend();      
+    }
+
+    void FIPrepRecv() {
+      GenIndShrsPartiesReceive();
+      GenUnpackedShrPartiesReceive();
+      GenZeroPartiesReceive();
+      GenZeroForProdPartiesReceive();      
+    }
+
     void GenProdPartiesSendP1() { mCorrelator.GenProdPartiesSendP1(); }
     void GenProdP1ReceivesAndSends() { mCorrelator.GenProdP1ReceivesAndSends(); }
     void GenProdPartiesReceive() { mCorrelator.GenProdPartiesReceive(); }

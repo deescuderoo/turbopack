@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 #include "tp/circuits.h"
 #include "tp/atlas.h"
@@ -81,21 +82,19 @@ int main(int argc, char** argv) {
   
   START_TIMER(fi_prep);
   PRINT("fi_prep SEND");
-  circuit.GenIndShrsPartiesSend();
-  circuit.GenUnpackedShrPartiesSend();
-  circuit.GenZeroPartiesSend(); 
-  circuit.GenZeroForProdPartiesSend();
+  std::thread t_FIPrepSend( &tp::Circuit::FIPrepSend, &circuit );
 
   PRINT("fi_prep RECV");
-  circuit.GenIndShrsPartiesReceive();
-  circuit.GenUnpackedShrPartiesReceive();
-  circuit.GenZeroPartiesReceive(); 
-  circuit.GenZeroForProdPartiesReceive();
+  circuit.FIPrepRecv();
+  t_FIPrepSend.join();
 
   PRINT("fi_prod");
-  circuit.GenProdPartiesSendP1(); 
-  circuit.GenProdP1ReceivesAndSends(); 
-  circuit.GenProdPartiesReceive(); 
+  std::thread t_GenProdPartiesSendP1( &tp::Circuit::GenProdPartiesSendP1, &circuit ); 
+  std::thread t_GenProdP1ReceivesAndSends( &tp::Circuit::GenProdP1ReceivesAndSends, &circuit ); 
+  circuit.GenProdPartiesReceive();
+
+  t_GenProdPartiesSendP1.join();
+  t_GenProdP1ReceivesAndSends.join();
   STOP_TIMER(fi_prep);
 
   circuit.MapCorrToCircuit(); 
@@ -106,6 +105,10 @@ int main(int argc, char** argv) {
   START_TIMER(fd_prep);
   // INPUT+OUTPUT+MULT.
   PRINT("fd_prep SEND");
+  // std::thread t_PrepMultPartiesSendP1( &tp::Circuit::PrepMultPartiesSendP1, &circuit ); 
+  // std::thread t_PrepMultP1ReceivesAndSends( &tp::Circuit::PrepMultP1ReceivesAndSends, &circuit ); 
+  // t_PrepMultPartiesSendP1.join();
+  // t_PrepMultP1ReceivesAndSends.join();
   circuit.PrepMultPartiesSendP1(); 
   circuit.PrepMultP1ReceivesAndSends(); 
   circuit.PrepIOPartiesSendOwner(); 
@@ -113,7 +116,7 @@ int main(int argc, char** argv) {
   PRINT("fd_prep RECV");
   circuit.PrepMultPartiesReceive(); 
   circuit.PrepIOOwnerReceives(); 
-  // Can be run inline with the above
+
   STOP_TIMER(fd_prep);
 
   std::vector<tp::FF> result;
@@ -134,7 +137,7 @@ int main(int argc, char** argv) {
 
   // MULT
   for (std::size_t layer = 0; layer < circuit_config.depth; layer++) {
-    PRINT("Mult layer " << layer);
+    // PRINT("Mult layer " << layer);
     circuit.MultP1Sends(layer); 
     circuit.MultPartiesReceive(layer); 
     circuit.MultPartiesSend(layer); 
