@@ -2,7 +2,10 @@
 
 case "$1" in
     "wan")
-	sudo tc qdisc add dev lo root netem delay 100ms rate 30Mbit
+	sudo tc qdisc add dev lo root netem delay 100ms rate 100Mbit
+	;;
+    "lan")
+	sudo tc qdisc add dev lo root netem delay 1ms rate 100Mbit
 	;;
     "normal")
 	sudo tc qdisc del dev lo root

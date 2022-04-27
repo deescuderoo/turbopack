@@ -8,7 +8,7 @@
 #define DELIM std::cout << "========================================\n"
 
 #define DEBUG true
-#define THREAD false
+#define THREAD true
 
 #define PRINT(x) if (DEBUG) std::cout << x << "\n";
 
@@ -127,10 +127,12 @@ int main(int argc, char** argv) {
        for (std::size_t layer = 0; layer < circuit_config.depth; layer++) {
 	 if (THREAD) {
 	   std::thread t_MultPartiesSendP1( &tp::Atlas::MultPartiesSendP1, &atlas, layer); 
-	   std::thread t_MultP1ReceivesAndSendsParties( &tp::Atlas::MultP1ReceivesAndSendsParties, &atlas, layer); 
-	   atlas.MultPartiesReceive(layer);
+	   atlas.MultP1Receives(layer);
 	   t_MultPartiesSendP1.join();
-	   t_MultP1ReceivesAndSendsParties.join();
+
+	   std::thread t_MultP1SendsParties( &tp::Atlas::MultP1SendsParties, &atlas, layer); 
+	   atlas.MultPartiesReceive(layer);
+	   t_MultP1SendsParties.join();
 	 } else {
 	   atlas.MultPartiesSendP1(layer); 
 	   atlas.MultP1ReceivesAndSendsParties(layer); 

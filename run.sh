@@ -43,6 +43,7 @@ echo "waiting for OUR experiment to finish ..."
 # wait $pidzero
 wait
 
+sleep 2
 echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 echo "Starting ATLAS"
 

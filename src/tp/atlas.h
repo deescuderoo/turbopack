@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <assert.h>
+#include <queue>
 
 #include "tp.h"
 #include "mult_gate.h"
@@ -241,7 +242,7 @@ namespace tp {
       }
     }
 
-    void MultP1ReceivesAndSendsParties(std::size_t layer) {
+    void MultP1Receives(std::size_t layer) {
       if (mCircuit.mID == 0) {
 	for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
 	  Vec shares;
@@ -265,106 +266,120 @@ namespace tp {
 
 	  auto poly = scl::details::EvPolynomial<FF>(x_points, y_points);
 	  auto shares_to_send = scl::details::SharesFromEvPoly(poly, mParties);
+	  mP1SharesToSend.push(shares_to_send);
+	}
+      }
+    }
+    void MultP1SendsParties(std::size_t layer) {
+      if (mCircuit.mID == 0) {
+	for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
 	  for ( std::size_t i = mThreshold; i < mCircuit.mParties; i++ ) {
-	    mCircuit.mNetwork->Party(i)->Send(shares_to_send[i]);
+	    mCircuit.mNetwork->Party(i)->Send(mP1SharesToSend.front()[i]);
 	  }
+	  mP1SharesToSend.pop();
 	}
       }
     }
 
-    void MultPartiesReceive(std::size_t layer) {
-      for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
-	if (mCircuit.mID >= mThreshold) {
-	  FF masked;
-	  mCircuit.mNetwork->Party(0)->Recv(masked);
+    void MultP1ReceivesAndSendsParties(std::size_t layer) {
+      MultP1Receives(layer);
+      MultP1SendsParties(layer);
+    }
+      void MultPartiesReceive(std::size_t layer) {
+	for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
+	  if (mCircuit.mID >= mThreshold) {
+	    FF masked;
+	    mCircuit.mNetwork->Party(0)->Recv(masked);
 	
-	  // Compute share
-	  FF share = masked + mDShrs[ mMapMults[mult_gate] ].shr;
+	    // Compute share
+	    FF share = masked + mDShrs[ mMapMults[mult_gate] ].shr;
 
-	  // Update map of shares
-	  mult_gate->SetAtlasShare(share);
-	} else {
-	  FF share = mDShrs[ mMapMults[mult_gate] ].shr;
-	  mult_gate->SetAtlasShare(share);
-	}
-      }
-    }
-
-    void OutputPartiesSendOwners() {
-      if ( mCircuit.mID < mThreshold + 1 ) { // Only P1 .. Pt+1 are needed
-	for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
-	  for (auto output_gate : mCircuit.mFlatOutputGates[owner_id]) {
-	    FF share = output_gate->GetAtlasShare();
-	    mCircuit.mNetwork->Party(owner_id)->Send(share);
+	    // Update map of shares
+	    mult_gate->SetAtlasShare(share);
+	  } else {
+	    FF share = mDShrs[ mMapMults[mult_gate] ].shr;
+	    mult_gate->SetAtlasShare(share);
 	  }
 	}
       }
-    }
+
+      void OutputPartiesSendOwners() {
+	if ( mCircuit.mID < mThreshold + 1 ) { // Only P1 .. Pt+1 are needed
+	  for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
+	    for (auto output_gate : mCircuit.mFlatOutputGates[owner_id]) {
+	      FF share = output_gate->GetAtlasShare();
+	      mCircuit.mNetwork->Party(owner_id)->Send(share);
+	    }
+	  }
+	}
+      }
     
-    void OutputOwnersReceive() {
-      // Owner receives
-      for (auto output_gate : mCircuit.mFlatOutputGates[mCircuit.mID]) {
-	if (mCircuit.mID == output_gate->GetOwner()) {
-	  Vec recv_shares;
-	  recv_shares.Reserve(mThreshold+1);
-	  for ( std::size_t i = 0; i < mThreshold+1; i++ ) {
-	    FF share;
-	    mCircuit.mNetwork->Party(i)->Recv(share);
-	    recv_shares.Emplace(share);
+      void OutputOwnersReceive() {
+	// Owner receives
+	for (auto output_gate : mCircuit.mFlatOutputGates[mCircuit.mID]) {
+	  if (mCircuit.mID == output_gate->GetOwner()) {
+	    Vec recv_shares;
+	    recv_shares.Reserve(mThreshold+1);
+	    for ( std::size_t i = 0; i < mThreshold+1; i++ ) {
+	      FF share;
+	      mCircuit.mNetwork->Party(i)->Recv(share);
+	      recv_shares.Emplace(share);
+	    }
+	    FF result = scl::details::SecretFromShares(recv_shares);
+
+	    mMapResults[output_gate] = result;
 	  }
-	  FF result = scl::details::SecretFromShares(recv_shares);
-
-	  mMapResults[output_gate] = result;
 	}
       }
-    }
 
-    FF GetOutput(std::size_t owner_id, std::size_t idx) {
-      return mMapResults[ mCircuit.mFlatOutputGates[owner_id][idx] ];
-    }
+      FF GetOutput(std::size_t owner_id, std::size_t idx) {
+	return mMapResults[ mCircuit.mFlatOutputGates[owner_id][idx] ];
+      }
 
-    void PrecomputeVandermonde() {
-      mVandermonde.reserve(mParties);
-      for (std::size_t i = 0; i < mParties; i++) {
-	mVandermonde.emplace_back(std::vector<FF>());
-	mVandermonde[i].reserve(mThreshold + 1);
-	FF entry(1);
-	for (std::size_t j = 0; j < mThreshold + 1; ++j) {
-	  mVandermonde[i].emplace_back(entry);
-	  entry *= FF(i);
+      void PrecomputeVandermonde() {
+	mVandermonde.reserve(mParties);
+	for (std::size_t i = 0; i < mParties; i++) {
+	  mVandermonde.emplace_back(std::vector<FF>());
+	  mVandermonde[i].reserve(mThreshold + 1);
+	  FF entry(1);
+	  for (std::size_t j = 0; j < mThreshold + 1; ++j) {
+	    mVandermonde[i].emplace_back(entry);
+	    entry *= FF(i);
+	  }
 	}
       }
-    }
 
-  private:
-    Circuit mCircuit;
+    private:
+      Circuit mCircuit;
 
-    // Amounts
-    std::size_t mNMults;
-    std::size_t mNInputs;
+      // Amounts
+      std::size_t mNMults;
+      std::size_t mNInputs;
 
-    // Counters
-    std::size_t mCTRDoubleShrs;
-    std::size_t mCTRRandShrs;
+      // Counters
+      std::size_t mCTRDoubleShrs;
+      std::size_t mCTRRandShrs;
 
-    // Preprocessing containers
-    std::vector<DoubleShr> mDShrs;
-    std::vector<RandShr> mRShrs;
+      // Preprocessing containers
+      std::vector<DoubleShr> mDShrs;
+      std::vector<RandShr> mRShrs;
 
-    // Maps (prep: map to indexes to the above containers)
-    std::map<std::shared_ptr<MultGate>, std::size_t> mMapMults;
-    std::map<std::shared_ptr<InputGate>, std::size_t> mMapInputs;
+      // Maps (prep: map to indexes to the above containers)
+      std::map<std::shared_ptr<MultGate>, std::size_t> mMapMults;
+      std::map<std::shared_ptr<InputGate>, std::size_t> mMapInputs;
 
-    // Map with results
-    std::map<std::shared_ptr<OutputGate>, FF> mMapResults;
+      // Map with results
+      std::map<std::shared_ptr<OutputGate>, FF> mMapResults;
 
-    std::size_t mParties;
-    std::size_t mThreshold;
+      std::size_t mParties;
+      std::size_t mThreshold;
 
-    scl::PRG mPRG;
-    std::vector<std::vector<FF>> mVandermonde; // mParties x (mThreshold + 1)
-  };
+      scl::PRG mPRG;
+      std::vector<std::vector<FF>> mVandermonde; // mParties x (mThreshold + 1)
 
-} // namespace tp
+      std::queue<Vec> mP1SharesToSend; 
+    };
+
+  } // namespace tp
 
 #endif  // ATLAS_H

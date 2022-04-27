@@ -14,7 +14,7 @@ rat = 1
 
 d_max = 3
 s_max = 5
-n_values = [13, 21, 29, 37]
+n_values = [13, 21]
 assert d_max < s_max
 
 d_set = [10**i for i in range(1, d_max+1)]
@@ -30,17 +30,27 @@ def print_power(i):
     else: raise Exception("Error")  
 
 
-def parse(n, s, d, num_it):
+def parse(n, s, d):
     
+    filename = f'logs/logs_experiment_{n}_{s}_{d}_0/party_0.log'
+    flag = os.path.exists(filename)
+    if (not flag):
+        return [0, 0, 0, 1, 1]
+
     fi_prep = 0
     fd_prep = 0
     online = 0
     atlas_prep = 0
     atlas_online = 0
 
-    for it in range(num_it):
-        filename = f'logs/logs_experiment_{n}_{s}_{d}_{it}/party_0.log'
-        file = open(filename, "r")
+    it = 0
+    while (True):
+        try:
+            filename = f'logs/logs_experiment_{n}_{s}_{d}_{it}/party_0.log'
+            file = open(filename, "r")
+            it += 1
+        except:
+            break
 
         for line in file:
             if line.startswith("fi_prep:"):
@@ -54,15 +64,17 @@ def parse(n, s, d, num_it):
             if line.startswith("atlas_online:"):
                 atlas_online += int(''.join(filter(str.isdigit, line)))
 
-    fi_prep = fi_prep/num_it
-    fd_prep = fd_prep/num_it
-    online = online/num_it
-    atlas_prep = atlas_prep/num_it
-    atlas_online = atlas_online/num_it
+    fi_prep = fi_prep/it
+    fd_prep = fd_prep/it
+    online = online/it
+    atlas_prep = atlas_prep/it
+    atlas_online = atlas_online/it
+
+    print(f"Parsed n={n}, s={s}, d={d}, num_it={it}")
 
     return [fi_prep / 10**6, fd_prep / 10**6, online / 10**6, atlas_prep / 10**6, atlas_online / 10**6]
 
-l = parse(n, s, d, num_it)
+l = parse(n, s, d)
 
 res = {}
 fd = {}
@@ -73,7 +85,7 @@ for d in d_set:
         fd[(s, d)] = ""
         fi[(s, d)] = ""
         for n in n_values:
-            res = parse(n, s, d, num_it)
+            res = parse(n, s, d)
 
             off_fd = res[0] + res[1]
             on_fd = res[2]
@@ -87,15 +99,18 @@ for d in d_set:
             ratio_off_fi = off_fi / off_atlas
             ratio_on_fi = on_fi / on_atlas
 
-            fd[(s, d)] += f" & {off_fd:.{dec}f} / {on_fd:.{dec}f} & {ratio_off_fd:.{rat}f} / {ratio_on_fd:.{rat}f}"
-            fi[(s, d)] += f" & {off_fi:.{dec}f} / {on_fi:.{dec}f} & {ratio_off_fi:.{rat}f} / {ratio_on_fi:.{rat}f}"
+            fd[(s, d)] += f" & {off_fd:.{dec}f} / {on_fd:.{dec}f} & " + "\\textbf{" + f"{ratio_off_fd:.{rat}f} / {ratio_on_fd:.{rat}f}" + "}"
+            fi[(s, d)] += f" & {off_fi:.{dec}f} / {on_fi:.{dec}f} & " + "\\textbf{" + f"{ratio_off_fi:.{rat}f} / {ratio_on_fi:.{rat}f}" + "}"
 
 string = ""
 
 for d in d_set:
     string += "\\multirow{" + str(2*len(s_values[d])) + "}{*}{" + print_power(d) + "}"
     for s in s_values[d]:
-        string += "& \\multirow{2}{*}{" + print_power(s) + "} & \\textbf{FD}" + fd[(s, d)] + "\\\\\n"
-        string += "& & \\textbf{FI}" + fi[(s, d)] + "\\\\ \n \\cmidrule{3-13} \n"
-
+        string += "& \\multirow{2}{*}{" + print_power(s) + "} & \\textbf{CD}" + fd[(s, d)] + "\\\\\n"
+        string += "& & \\textbf{CI}" + fi[(s, d)] + "\\\\ \n"
+        if (s == s_values[d][-1]):
+            string += "\\midrule \n"
+        else:
+            string += "\\cmidrule{3-13} \n"
 print(string)
