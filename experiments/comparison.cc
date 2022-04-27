@@ -3,12 +3,12 @@
 #include <thread>
 
 #include "tp/circuits.h"
-#include "tp/atlas.h"
 #include "misc.h"
 
 #define DELIM std::cout << "========================================\n"
 
 #define DEBUG true
+#define THREAD true
 
 #define PRINT(x) if (DEBUG) std::cout << x << "\n";
 
@@ -20,7 +20,8 @@ inline std::size_t ValidateN(const std::size_t n) {
 }
 
 inline std::size_t ValidateId(const std::size_t id, const std::size_t n) {
-  assert(id < n);
+      if ( id >= n )
+	throw std::invalid_argument("ID cannot be larger than number of parties");
   return id;
 }
 
@@ -82,19 +83,30 @@ int main(int argc, char** argv) {
   
   START_TIMER(fi_prep);
   PRINT("fi_prep SEND");
-  std::thread t_FIPrepSend( &tp::Circuit::FIPrepSend, &circuit );
-
-  PRINT("fi_prep RECV");
-  circuit.FIPrepRecv();
-  t_FIPrepSend.join();
+  if (THREAD) {
+    std::thread t_FIPrepSend( &tp::Circuit::FIPrepSend, &circuit );
+    PRINT("fi_prep RECV");
+    circuit.FIPrepRecv();
+    t_FIPrepSend.join();
+  } else {
+    circuit.FIPrepSend();
+    PRINT("fi_prep RECV");
+    circuit.FIPrepRecv();
+  }
 
   PRINT("fi_prod");
-  std::thread t_GenProdPartiesSendP1( &tp::Circuit::GenProdPartiesSendP1, &circuit ); 
-  std::thread t_GenProdP1ReceivesAndSends( &tp::Circuit::GenProdP1ReceivesAndSends, &circuit ); 
-  circuit.GenProdPartiesReceive();
+  if (THREAD) {
+    std::thread t_GenProdPartiesSendP1( &tp::Circuit::GenProdPartiesSendP1, &circuit ); 
+    std::thread t_GenProdP1ReceivesAndSends( &tp::Circuit::GenProdP1ReceivesAndSends, &circuit ); 
+    circuit.GenProdPartiesReceive();
+    t_GenProdPartiesSendP1.join();
+    t_GenProdP1ReceivesAndSends.join();
+  } else {
+    circuit.GenProdPartiesSendP1();
+    circuit.GenProdP1ReceivesAndSends();
+    circuit.GenProdPartiesReceive();
+  }
 
-  t_GenProdPartiesSendP1.join();
-  t_GenProdP1ReceivesAndSends.join();
   STOP_TIMER(fi_prep);
 
   circuit.MapCorrToCircuit(); 
@@ -154,51 +166,6 @@ int main(int argc, char** argv) {
   if (id == 0) {
     // std::cout << "\nOUTPUT = " << circuit.GetOutputs()[0] << "\nREAL = " << result[0] << "\n";
     assert( circuit.GetOutputs() == result );
-  }
-
-  //////////////////////////////////////////
-
-
-  // ATLAS
-  tp::Atlas atlas(n_parties, t);
-  atlas.SetCircuit(circuit);
-
-  // Prep
-  DELIM;
-  std::cout << "ATLAS: Running preprocessing\n";
-  START_TIMER(atlas_prep);
-
-  atlas.PrepPartiesSend(); 
-  atlas.PrepPartiesReceive(); 
-
-  STOP_TIMER(atlas_prep);
-
-
-  DELIM;
-  std::cout << "ATLAS: Running online\n";
-  START_TIMER(atlas_online);
-  // Input protocol (inputs are already set from above)
-
-  atlas.InputPartiesSendOwners(); 
-  atlas.InputOwnersReceiveAndSendParties(); 
-  atlas.InputPartiesReceive(); 
-
-  // Multiplications 
-    
-       for (std::size_t layer = 0; layer < circuit_config.depth; layer++) {
-	 atlas.MultPartiesSendP1(layer); 
-	 atlas.MultP1ReceivesAndSendsParties(layer); 
-	 atlas.MultPartiesReceive(layer); 
-       }
-  // Output protocol
-  atlas.OutputPartiesSendOwners(); 
-  atlas.OutputOwnersReceive(); 
-
-  STOP_TIMER(atlas_online);
-
-  if (id == 0) {
-    // std::cout << "\nOUTPUT = " << atlas.GetOutput(0,0) << "\nREAL = " << result[0] << "\n";
-    assert( atlas.GetOutput(0,0) == result[0] );
   }
 
   std::cout << "\nclosing the network ...\n";

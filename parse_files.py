@@ -13,7 +13,8 @@ dec = 2
 rat = 1
 
 d_max = 3
-s_max = 4
+s_max = 5
+n_values = [13, 21, 29, 37]
 assert d_max < s_max
 
 d_set = [10**i for i in range(1, d_max+1)]
@@ -38,19 +39,19 @@ def parse(n, s, d, num_it):
     atlas_online = 0
 
     for it in range(num_it):
-        filename = f'logs/logs_exp_comp_{n}_{s}_{d}_{it}/party_0.log'
+        filename = f'logs/logs_experiment_{n}_{s}_{d}_{it}/party_0.log'
         file = open(filename, "r")
 
         for line in file:
-            if "fi_prep:" in line:
+            if line.startswith("fi_prep:"):
                 fi_prep += int(''.join(filter(str.isdigit, line)))
-            if "fd_prep:" in line:
+            if line.startswith("fd_prep:"):
                 fd_prep += int(''.join(filter(str.isdigit, line)))
-            if "online:" in line:
+            if line.startswith("online:"):
                 online += int(''.join(filter(str.isdigit, line)))
-            if "atlas_prep:" in line:
+            if line.startswith("atlas_prep:"):
                 atlas_prep += int(''.join(filter(str.isdigit, line)))
-            if "atlas_online:" in line:
+            if line.startswith("atlas_online:"):
                 atlas_online += int(''.join(filter(str.isdigit, line)))
 
     fi_prep = fi_prep/num_it
@@ -71,7 +72,7 @@ for d in d_set:
     for s in s_values[d]:
         fd[(s, d)] = ""
         fi[(s, d)] = ""
-        for n in [13, 21, 29, 37, 45]:
+        for n in n_values:
             res = parse(n, s, d, num_it)
 
             off_fd = res[0] + res[1]

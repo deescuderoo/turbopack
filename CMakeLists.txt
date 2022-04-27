@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -pedantic -Werror -std=gnu++17")
 
 set(EXP_COMP "exp_comp.x")
+set(ATLAS "atlas.x")
 
 set(TEST_EXECUTABLE "tests.x")
 
@@ -59,3 +60,8 @@ target_include_directories(${EXP_COMP} PUBLIC
   "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
   "${CMAKE_SOURCE_DIR}/src")
 target_link_libraries(${EXP_COMP} pthread ${libscl})
+add_executable(${ATLAS} experiments/atlas.cc ${TP_SOURCE_FILES})
+target_include_directories(${ATLAS} PUBLIC
+  "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
+  "${CMAKE_SOURCE_DIR}/src")
+target_link_libraries(${ATLAS} pthread ${libscl})

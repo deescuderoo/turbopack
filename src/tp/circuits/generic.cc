@@ -64,5 +64,5 @@ namespace tp {
     circuit.CloseOutputs();
 
     return circuit;
-  };
+  }
 } // namespace tp
