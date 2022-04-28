@@ -55,12 +55,12 @@ namespace tp {
       return mLambda;
     }    
 
-    FF GetAtlasShare() {
-      if ( !mAtlasSet ) {
-	mAtlasShare = mLeft->GetAtlasShare();
-	mAtlasSet = true;
+    FF GetDn07Share() {
+      if ( !mDn07Set ) {
+	mDn07Share = mLeft->GetDn07Share();
+	mDn07Set = true;
       }
-      return mAtlasShare;
+      return mDn07Share;
     }    
 
     FF GetClear() {

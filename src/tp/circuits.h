@@ -392,7 +392,7 @@ namespace tp {
     bool mIsClosed;
     bool mIsNetworkSet;
 
-    friend class Atlas;
+    friend class DN07;
   };
 
 } // namespace tp

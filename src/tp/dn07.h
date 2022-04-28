@@ -1,5 +1,5 @@
-#ifndef ATLAS_H
-#define ATLAS_H
+#ifndef DN07_H
+#define DN07_H
 
 #include <catch2/catch.hpp>
 #include <iostream>
@@ -43,9 +43,9 @@ namespace tp {
     }
   };
 
-  class Atlas {
+  class DN07 {
   public:
-    Atlas(std::size_t parties, std::size_t threshold) : mCTRDoubleShrs(0), mCTRRandShrs(0), \
+    DN07(std::size_t parties, std::size_t threshold) : mCTRDoubleShrs(0), mCTRRandShrs(0), \
 							mParties(parties), mThreshold(threshold) {
       if ( mParties <= 2*mThreshold )
 	throw std::invalid_argument("It must hold that t < n/2");
@@ -224,7 +224,7 @@ namespace tp {
 	  FF share = masked + mRShrs[ mMapInputs[input_gate] ].shr;
 
 	  // Update map of shares
-	  input_gate->SetAtlasShare(share);
+	  input_gate->SetDn07Share(share);
 	}
       }
     }
@@ -232,7 +232,7 @@ namespace tp {
     void MultPartiesSendP1(std::size_t layer) {
       for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
 	// Send masked shares to P1
-	FF shr = mult_gate->GetLeft()->GetAtlasShare() * mult_gate->GetRight()->GetAtlasShare() \
+	FF shr = mult_gate->GetLeft()->GetDn07Share() * mult_gate->GetRight()->GetDn07Share() \
 	  - mDShrs[mCTRDoubleShrs].dshr;
 
 	mCircuit.mNetwork->Party(0)->Send(shr);
@@ -295,10 +295,10 @@ namespace tp {
 	    FF share = masked + mDShrs[ mMapMults[mult_gate] ].shr;
 
 	    // Update map of shares
-	    mult_gate->SetAtlasShare(share);
+	    mult_gate->SetDn07Share(share);
 	  } else {
 	    FF share = mDShrs[ mMapMults[mult_gate] ].shr;
-	    mult_gate->SetAtlasShare(share);
+	    mult_gate->SetDn07Share(share);
 	  }
 	}
       }
@@ -307,7 +307,7 @@ namespace tp {
 	if ( mCircuit.mID < mThreshold + 1 ) { // Only P1 .. Pt+1 are needed
 	  for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
 	    for (auto output_gate : mCircuit.mFlatOutputGates[owner_id]) {
-	      FF share = output_gate->GetAtlasShare();
+	      FF share = output_gate->GetDn07Share();
 	      mCircuit.mNetwork->Party(owner_id)->Send(share);
 	    }
 	  }
@@ -382,4 +382,4 @@ namespace tp {
 
   } // namespace tp
 
-#endif  // ATLAS_H
+#endif  // DN07_H

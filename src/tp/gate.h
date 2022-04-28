@@ -33,14 +33,14 @@ namespace tp {
     // To get indv_shr lambda 
     virtual FF GetIndvShrLambda() = 0; 
 
-    // Setting ATLAS share
-    void SetAtlasShare(FF share) {
-      mAtlasShare = share;
-      mAtlasSet = true;
+    // Setting DN07 share
+    void SetDn07Share(FF share) {
+      mDn07Share = share;
+      mDn07Set = true;
     }
 
-    // To get share when run with ATLAS
-    virtual FF GetAtlasShare() = 0; 
+    // To get share when run with DN07
+    virtual FF GetDn07Share() = 0; 
 
     // To get lambda when having fake preprocessing
     virtual FF GetDummyLambda() = 0; 
@@ -62,9 +62,9 @@ namespace tp {
     FF mIndvShrLambdaC = FF(0);
     bool mIndvShrLambdaCSet = false;
 
-    // ATLAS-related
-    FF mAtlasShare;
-    bool mAtlasSet = false;
+    // DN07-related
+    FF mDn07Share;
+    bool mDn07Set = false;
 
     // mu = value - lambda
     // Learned by P1 in the online phase
@@ -122,12 +122,12 @@ namespace tp {
       return mIndvShrLambdaC;
     }    
 
-    FF GetAtlasShare() {
-      if ( !mAtlasSet ) {
-	mAtlasShare = mLeft->GetAtlasShare() + mRight->GetAtlasShare();
-	mAtlasSet = true;
+    FF GetDn07Share() {
+      if ( !mDn07Set ) {
+	mDn07Share = mLeft->GetDn07Share() + mRight->GetDn07Share();
+	mDn07Set = true;
       }
-      return mAtlasShare;
+      return mDn07Share;
     }    
 
     FF GetDummyLambda() {

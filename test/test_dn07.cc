@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
 #include <iostream>
 
-#include "tp/atlas.h"
+#include "tp/dn07.h"
 
 #define PARTY for(std::size_t i = 0; i < n_parties; i++)
 
-TEST_CASE("ATLAS: Dummy FD") {
+TEST_CASE("DN07: Dummy FD") {
   SECTION("Hand-made Circuit")     {
     std::size_t threshold = 4; // has to be even
     std::size_t batch_size = (threshold + 2)/2;
@@ -17,8 +17,8 @@ TEST_CASE("ATLAS: Dummy FD") {
 
     std::vector<tp::Circuit> circuits;
     circuits.reserve(n_parties);
-    std::vector<tp::Atlas> atlases;
-    atlases.reserve(n_parties);
+    std::vector<tp::DN07> dn07es;
+    dn07es.reserve(n_parties);
 
     PARTY {
       auto c = tp::Circuit(n_clients, batch_size);
@@ -51,14 +51,14 @@ TEST_CASE("ATLAS: Dummy FD") {
       c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
 
 
-      tp::Atlas atlas(n_parties, threshold);
-      atlas.SetCircuit(c);
+      tp::DN07 dn07(n_parties, threshold);
+      dn07.SetCircuit(c);
    
-      atlases.emplace_back(atlas);
+      dn07es.emplace_back(dn07);
     }
 
     // DUMMY PREP
-    PARTY { atlases[i].DummyPrep(prep); }
+    PARTY { dn07es[i].DummyPrep(prep); }
 
     // SET INPUTS
     tp::FF X(21321);
@@ -67,29 +67,29 @@ TEST_CASE("ATLAS: Dummy FD") {
     tp::FF V(-894);
 
     // P1 sets inpus X and U
-    atlases[0].GetCircuit().SetInputs(std::vector<tp::FF>{X, U});
+    dn07es[0].GetCircuit().SetInputs(std::vector<tp::FF>{X, U});
     // P2 sets inpus Y and V
-    atlases[1].GetCircuit().SetInputs(std::vector<tp::FF>{Y, V});
+    dn07es[1].GetCircuit().SetInputs(std::vector<tp::FF>{Y, V});
 
     // Input protocol
 
-    PARTY { atlases[i].InputPartiesSendOwners(); }
-    PARTY { atlases[i].InputOwnersReceiveAndSendParties(); }
-    PARTY { atlases[i].InputPartiesReceive(); }
+    PARTY { dn07es[i].InputPartiesSendOwners(); }
+    PARTY { dn07es[i].InputOwnersReceiveAndSendParties(); }
+    PARTY { dn07es[i].InputPartiesReceive(); }
 
     // Multiplications (there is only one layer)
     
-    PARTY { atlases[i].MultPartiesSendP1(0); }
-    PARTY { atlases[i].MultP1ReceivesAndSendsParties(0); }
-    PARTY { atlases[i].MultPartiesReceive(0); }
+    PARTY { dn07es[i].MultPartiesSendP1(0); }
+    PARTY { dn07es[i].MultP1ReceivesAndSendsParties(0); }
+    PARTY { dn07es[i].MultPartiesReceive(0); }
 
     // Output protocol
-    PARTY { atlases[i].OutputPartiesSendOwners(); }
-    PARTY { atlases[i].OutputOwnersReceive(); }
+    PARTY { dn07es[i].OutputPartiesSendOwners(); }
+    PARTY { dn07es[i].OutputOwnersReceive(); }
 
     // Check output
     tp::FF real = (X+Y)*X + (X+Y)*Y + (U+V)*U + (U+V)*V;
-    REQUIRE(atlases[0].GetOutput(0,0) == real);
+    REQUIRE(dn07es[0].GetOutput(0,0) == real);
   }
   
   SECTION("Generic Circuit")     {
@@ -111,8 +111,8 @@ TEST_CASE("ATLAS: Dummy FD") {
 
     tp::FF prep(-5342891);
 
-    std::vector<tp::Atlas> atlases;
-    atlases.reserve(n_parties);
+    std::vector<tp::DN07> dn07es;
+    dn07es.reserve(n_parties);
 
     PARTY {
       auto c = tp::Circuit::FromConfig(config);
@@ -120,43 +120,43 @@ TEST_CASE("ATLAS: Dummy FD") {
 
       c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
 
-      tp::Atlas atlas(n_parties, threshold);
-      atlas.SetCircuit(c);
+      tp::DN07 dn07(n_parties, threshold);
+      dn07.SetCircuit(c);
    
-      atlases.emplace_back(atlas);
+      dn07es.emplace_back(dn07);
     }
 
     // DUMMY PREP
-    PARTY { atlases[i].DummyPrep(prep); }
+    PARTY { dn07es[i].DummyPrep(prep); }
 
     std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
-    atlases[0].GetCircuit().SetClearInputsFlat(inputs);
-    auto result = atlases[0].GetCircuit().GetClearOutputsFlat();
-    atlases[0].GetCircuit().SetInputs(inputs);
+    dn07es[0].GetCircuit().SetClearInputsFlat(inputs);
+    auto result = dn07es[0].GetCircuit().GetClearOutputsFlat();
+    dn07es[0].GetCircuit().SetInputs(inputs);
 
     // Input protocol
 
-    PARTY { atlases[i].InputPartiesSendOwners(); }
-    PARTY { atlases[i].InputOwnersReceiveAndSendParties(); }
-    PARTY { atlases[i].InputPartiesReceive(); }
+    PARTY { dn07es[i].InputPartiesSendOwners(); }
+    PARTY { dn07es[i].InputOwnersReceiveAndSendParties(); }
+    PARTY { dn07es[i].InputPartiesReceive(); }
 
     // Multiplications (there is only one layer)
     
     for (std::size_t layer = 0; layer < config.depth; layer++) {
-      PARTY { atlases[i].MultPartiesSendP1(layer); }
-      PARTY { atlases[i].MultP1ReceivesAndSendsParties(layer); }
-      PARTY { atlases[i].MultPartiesReceive(layer); }
+      PARTY { dn07es[i].MultPartiesSendP1(layer); }
+      PARTY { dn07es[i].MultP1ReceivesAndSendsParties(layer); }
+      PARTY { dn07es[i].MultPartiesReceive(layer); }
     }
     // Output protocol
-    PARTY { atlases[i].OutputPartiesSendOwners(); }
-    PARTY { atlases[i].OutputOwnersReceive(); }
+    PARTY { dn07es[i].OutputPartiesSendOwners(); }
+    PARTY { dn07es[i].OutputOwnersReceive(); }
 
     // Check output
-    REQUIRE(atlases[0].GetOutput(0,0) == result[0]);
+    REQUIRE(dn07es[0].GetOutput(0,0) == result[0]);
   }  
 }
 
-TEST_CASE("ATLAS: Real Prep") {
+TEST_CASE("DN07: Real Prep") {
   SECTION("Hand-made Circuit")     {
     std::size_t threshold = 4; // has to be even
     std::size_t batch_size = (threshold + 2)/2;
@@ -166,8 +166,8 @@ TEST_CASE("ATLAS: Real Prep") {
 
     std::vector<tp::Circuit> circuits;
     circuits.reserve(n_parties);
-    std::vector<tp::Atlas> atlases;
-    atlases.reserve(n_parties);
+    std::vector<tp::DN07> dn07es;
+    dn07es.reserve(n_parties);
 
     PARTY {
       auto c = tp::Circuit(n_clients, batch_size);
@@ -200,15 +200,15 @@ TEST_CASE("ATLAS: Real Prep") {
       c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
 
 
-      tp::Atlas atlas(n_parties, threshold);
-      atlas.SetCircuit(c);
+      tp::DN07 dn07(n_parties, threshold);
+      dn07.SetCircuit(c);
    
-      atlases.emplace_back(atlas);
+      dn07es.emplace_back(dn07);
     }
 
     // Prep
-    PARTY { atlases[i].PrepPartiesSend(); }
-    PARTY { atlases[i].PrepPartiesReceive(); }
+    PARTY { dn07es[i].PrepPartiesSend(); }
+    PARTY { dn07es[i].PrepPartiesReceive(); }
 
     // SET INPUTS
     tp::FF X(12);
@@ -217,29 +217,29 @@ TEST_CASE("ATLAS: Real Prep") {
     tp::FF V(48);
 
     // P1 sets inpus X and U
-    atlases[0].GetCircuit().SetInputs(std::vector<tp::FF>{X, U});
+    dn07es[0].GetCircuit().SetInputs(std::vector<tp::FF>{X, U});
     // P2 sets inpus Y and V
-    atlases[1].GetCircuit().SetInputs(std::vector<tp::FF>{Y, V});
+    dn07es[1].GetCircuit().SetInputs(std::vector<tp::FF>{Y, V});
 
     // Input protocol
 
-    PARTY { atlases[i].InputPartiesSendOwners(); }
-    PARTY { atlases[i].InputOwnersReceiveAndSendParties(); }
-    PARTY { atlases[i].InputPartiesReceive(); }
+    PARTY { dn07es[i].InputPartiesSendOwners(); }
+    PARTY { dn07es[i].InputOwnersReceiveAndSendParties(); }
+    PARTY { dn07es[i].InputPartiesReceive(); }
 
     // Multiplications (there is only one layer)
     
-    PARTY { atlases[i].MultPartiesSendP1(0); }
-    PARTY { atlases[i].MultP1ReceivesAndSendsParties(0); }
-    PARTY { atlases[i].MultPartiesReceive(0); }
+    PARTY { dn07es[i].MultPartiesSendP1(0); }
+    PARTY { dn07es[i].MultP1ReceivesAndSendsParties(0); }
+    PARTY { dn07es[i].MultPartiesReceive(0); }
 
     // Output protocol
-    PARTY { atlases[i].OutputPartiesSendOwners(); }
-    PARTY { atlases[i].OutputOwnersReceive(); }
+    PARTY { dn07es[i].OutputPartiesSendOwners(); }
+    PARTY { dn07es[i].OutputOwnersReceive(); }
 
     // Check output
     tp::FF real = (X+Y)*X + (X+Y)*Y + (U+V)*U + (U+V)*V;
-    REQUIRE(atlases[0].GetOutput(0,0) == real);
+    REQUIRE(dn07es[0].GetOutput(0,0) == real);
   }
 
   SECTION("Generic Circuit")     {
@@ -261,8 +261,8 @@ TEST_CASE("ATLAS: Real Prep") {
 
     tp::FF prep(-5342891);
 
-    std::vector<tp::Atlas> atlases;
-    atlases.reserve(n_parties);
+    std::vector<tp::DN07> dn07es;
+    dn07es.reserve(n_parties);
 
     PARTY {
       auto c = tp::Circuit::FromConfig(config);
@@ -270,40 +270,40 @@ TEST_CASE("ATLAS: Real Prep") {
 
       c.SetNetwork(std::make_shared<scl::Network>(networks[i]), i);
 
-      tp::Atlas atlas(n_parties, threshold);
-      atlas.SetCircuit(c);
+      tp::DN07 dn07(n_parties, threshold);
+      dn07.SetCircuit(c);
    
-      atlases.emplace_back(atlas);
+      dn07es.emplace_back(dn07);
     }
 
     // Prep
-    PARTY { atlases[i].PrepPartiesSend(); }
-    PARTY { atlases[i].PrepPartiesReceive(); }
+    PARTY { dn07es[i].PrepPartiesSend(); }
+    PARTY { dn07es[i].PrepPartiesReceive(); }
 
     std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
-    atlases[0].GetCircuit().SetClearInputsFlat(inputs);
-    auto result = atlases[0].GetCircuit().GetClearOutputsFlat();
-    atlases[0].GetCircuit().SetInputs(inputs);
+    dn07es[0].GetCircuit().SetClearInputsFlat(inputs);
+    auto result = dn07es[0].GetCircuit().GetClearOutputsFlat();
+    dn07es[0].GetCircuit().SetInputs(inputs);
 
     // Input protocol
 
-    PARTY { atlases[i].InputPartiesSendOwners(); }
-    PARTY { atlases[i].InputOwnersReceiveAndSendParties(); }
-    PARTY { atlases[i].InputPartiesReceive(); }
+    PARTY { dn07es[i].InputPartiesSendOwners(); }
+    PARTY { dn07es[i].InputOwnersReceiveAndSendParties(); }
+    PARTY { dn07es[i].InputPartiesReceive(); }
 
     // Multiplications (there is only one layer)
     
     for (std::size_t layer = 0; layer < config.depth; layer++) {
-      PARTY { atlases[i].MultPartiesSendP1(layer); }
-      PARTY { atlases[i].MultP1ReceivesAndSendsParties(layer); }
-      PARTY { atlases[i].MultPartiesReceive(layer); }
+      PARTY { dn07es[i].MultPartiesSendP1(layer); }
+      PARTY { dn07es[i].MultP1ReceivesAndSendsParties(layer); }
+      PARTY { dn07es[i].MultPartiesReceive(layer); }
     }
     // Output protocol
-    PARTY { atlases[i].OutputPartiesSendOwners(); }
-    PARTY { atlases[i].OutputOwnersReceive(); }
+    PARTY { dn07es[i].OutputPartiesSendOwners(); }
+    PARTY { dn07es[i].OutputOwnersReceive(); }
 
     // Check output
-    REQUIRE(atlases[0].GetOutput(0,0) == result[0]);
+    REQUIRE(dn07es[0].GetOutput(0,0) == result[0]);
   }
 }
 

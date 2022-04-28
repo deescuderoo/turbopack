@@ -2,7 +2,7 @@
 #include <chrono>
 #include <thread>
 
-#include "tp/atlas.h"
+#include "tp/dn07.h"
 #include "misc.h"
 
 #define DELIM std::cout << "========================================\n"
@@ -81,73 +81,73 @@ int main(int argc, char** argv) {
   //////////////////////////////////////////
 
 
-  // ATLAS
-  tp::Atlas atlas(n_parties, t);
-  atlas.SetCircuit(circuit);
+  // DN07
+  tp::DN07 dn07(n_parties, t);
+  dn07.SetCircuit(circuit);
 
   // Prep
   DELIM;
-  std::cout << "ATLAS: Running preprocessing\n";
+  std::cout << "DN07: Running preprocessing\n";
 
-  START_TIMER(atlas_prep);
+  START_TIMER(dn07_prep);
   // This has to be done BEFORE setting the inputs below
   if (THREAD) {
-    std::thread t_PrepPartiesSend( &tp::Atlas::PrepPartiesSend, &atlas );
-    atlas.PrepPartiesReceive();
+    std::thread t_PrepPartiesSend( &tp::DN07::PrepPartiesSend, &dn07 );
+    dn07.PrepPartiesReceive();
     t_PrepPartiesSend.join();
   } else {
-    atlas.PrepPartiesSend(); 
-    atlas.PrepPartiesReceive();
+    dn07.PrepPartiesSend(); 
+    dn07.PrepPartiesReceive();
   }
 
 
-  STOP_TIMER(atlas_prep);
+  STOP_TIMER(dn07_prep);
 
 
   std::vector<tp::FF> result;
   if (id == 0){
     std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
-    atlas.GetCircuit().SetClearInputsFlat(inputs);
-    result = atlas.GetCircuit().GetClearOutputsFlat();
-    atlas.GetCircuit().SetInputs(inputs);
+    dn07.GetCircuit().SetClearInputsFlat(inputs);
+    result = dn07.GetCircuit().GetClearOutputsFlat();
+    dn07.GetCircuit().SetInputs(inputs);
   }
 
 
   DELIM;
-  std::cout << "ATLAS: Running online\n";
-  START_TIMER(atlas_online);
+  std::cout << "DN07: Running online\n";
+  START_TIMER(dn07_online);
   // Input protocol (inputs are already set from above)
 
-  atlas.InputPartiesSendOwners(); 
-  atlas.InputOwnersReceiveAndSendParties(); 
-  atlas.InputPartiesReceive(); 
+  dn07.InputPartiesSendOwners(); 
+  dn07.InputOwnersReceiveAndSendParties(); 
+  dn07.InputPartiesReceive(); 
 
   // Multiplications 
     
        for (std::size_t layer = 0; layer < circuit_config.depth; layer++) {
 	 if (THREAD) {
-	   std::thread t_MultPartiesSendP1( &tp::Atlas::MultPartiesSendP1, &atlas, layer); 
-	   atlas.MultP1Receives(layer);
+	   std::thread t_MultPartiesSendP1( &tp::DN07::MultPartiesSendP1, &dn07, layer); 
+	   dn07.MultP1Receives(layer);
 	   t_MultPartiesSendP1.join();
 
-	   std::thread t_MultP1SendsParties( &tp::Atlas::MultP1SendsParties, &atlas, layer); 
-	   atlas.MultPartiesReceive(layer);
+	   std::thread t_MultP1SendsParties( &tp::DN07::MultP1SendsParties, &dn07, layer); 
+	   dn07.MultPartiesReceive(layer);
 	   t_MultP1SendsParties.join();
 	 } else {
-	   atlas.MultPartiesSendP1(layer); 
-	   atlas.MultP1ReceivesAndSendsParties(layer); 
-	   atlas.MultPartiesReceive(layer);
+	   dn07.MultPartiesSendP1(layer); 
+	   dn07.MultP1ReceivesAndSendsParties(layer); 
+	   dn07.MultPartiesReceive(layer);
 	 }
        }
   // Output protocol
-  atlas.OutputPartiesSendOwners(); 
-  atlas.OutputOwnersReceive(); 
+  dn07.OutputPartiesSendOwners(); 
+  dn07.OutputOwnersReceive(); 
 
-  STOP_TIMER(atlas_online);
+  STOP_TIMER(dn07_online);
 
   if (id == 0) {
-    // std::cout << "\nOUTPUT = " << atlas.GetOutput(0,0) << "\nREAL = " << result[0] << "\n";
-    assert( atlas.GetOutput(0,0) == result[0] );
+    // std::cout << "\nOUTPUT = " << dn07.GetOutput(0,0) << "\nREAL = " << result[0] << "\n";
+    assert( dn07.GetOutput(0,0) == result[0] );
   }
 
   std::cout << "\nclosing the network ...\n";

@@ -5,8 +5,8 @@ project( turbo-packing DESCRIPTION "Turbo-Packing" )
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -pedantic -Werror -std=gnu++17")
 
-set(EXP_COMP "exp_comp.x")
-set(ATLAS "atlas.x")
+set(OURS "ours.x")
+set(DN07 "dn07.x")
 
 set(TEST_EXECUTABLE "tests.x")
 
@@ -25,7 +25,7 @@ set(TP_SOURCE_FILES
   src/tp/correlator.cc  
   src/tp/fi_prep.cc  
 
-  src/tp/atlas.cc  
+  src/tp/dn07.cc  
 )
 
 set(TEST_SOURCE_FILES
@@ -38,7 +38,7 @@ set(TEST_SOURCE_FILES
   test/test_mult.cc
   test/test_fd_prep.cc
 
-  test/test_atlas.cc
+  test/test_dn07.cc
 )
 
 
@@ -55,13 +55,13 @@ set( libscl "${CMAKE_SOURCE_DIR}/secure-computation-library/build/libscl.so.0.3"
 target_link_libraries( ${TEST_EXECUTABLE} Catch2::Catch2 pthread ${libscl})
 # target_link_libraries( ${TEST_EXECUTABLE} Catch2::Catch2 pthread scl)
 
-add_executable(${EXP_COMP} experiments/comparison.cc ${TP_SOURCE_FILES})
-target_include_directories(${EXP_COMP} PUBLIC
+add_executable(${OURS} experiments/ours.cc ${TP_SOURCE_FILES})
+target_include_directories(${OURS} PUBLIC
   "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
   "${CMAKE_SOURCE_DIR}/src")
-target_link_libraries(${EXP_COMP} pthread ${libscl})
-add_executable(${ATLAS} experiments/atlas.cc ${TP_SOURCE_FILES})
-target_include_directories(${ATLAS} PUBLIC
+target_link_libraries(${OURS} pthread ${libscl})
+add_executable(${DN07} experiments/dn07.cc ${TP_SOURCE_FILES})
+target_include_directories(${DN07} PUBLIC
   "${CMAKE_SOURCE_DIR}/secure-computation-library/include"
   "${CMAKE_SOURCE_DIR}/src")
-target_link_libraries(${ATLAS} pthread ${libscl})
+target_link_libraries(${DN07} pthread ${libscl})

@@ -45,10 +45,10 @@ namespace tp {
       return mIndvShrLambdaC;
     }
 
-    FF GetAtlasShare() {
-      if ( !mAtlasSet )
-	throw std::invalid_argument("Atlas shares is not set in this multiplication gate");
-      return mAtlasShare;
+    FF GetDn07Share() {
+      if ( !mDn07Set )
+	throw std::invalid_argument("Dn07 shares is not set in this multiplication gate");
+      return mDn07Share;
     }
 
     FF GetClear() {
