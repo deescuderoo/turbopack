@@ -3,6 +3,7 @@
 import os
 entries = os.scandir('logs/')
 
+logs_dir = "logs"
 
 n = 13
 s = 1000
@@ -10,15 +11,16 @@ d = 10
 num_it = 1
 
 dec = 2
-rat = 1
+rat = 2
 
 d_max = 1
-s_max = 7
-n_values = [13, 21]
+s_max = 6
+n_values = [5, 13, 21, 29, 37]
+# n_values = [29, 37, 45, 53, 61]
 assert d_max < s_max
 
-d_set = [10**i for i in range(1, d_max+1)]
-s_values = { 10**d: [10**i for i in range(max(d+1, 3), s_max+1)] for d in range(1, d_max+1) }
+d_set = [10**i for i in range(0, d_max+1)]
+s_values = { 10**d: [10**i for i in range(max(d+1, 3), s_max+1)] for d in range(0, d_max+1) }
 
 
 def print_power(i):
@@ -35,7 +37,7 @@ def parse(n, s, d):
     
     w = s/d
 
-    filename = f'logs/logs_experiment_{n}_{s}_{d}_0/party_0.log'
+    filename = logs_dir + f"/logs_experiment_{n}_{s}_{d}_0/party_0.log"
     flag = os.path.exists(filename)
     if (not flag):
         return [0, 0, 0, 1, 1]
@@ -49,7 +51,7 @@ def parse(n, s, d):
     it = 0
     while (True):
         try:
-            filename = f'logs/logs_experiment_{n}_{s}_{d}_{it}/party_0.log'
+            filename = logs_dir + f'/logs_experiment_{n}_{s}_{d}_{it}/party_0.log'
             file = open(filename, "r")
             it += 1
         except:

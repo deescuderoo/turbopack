@@ -1,6 +1,78 @@
 #include "tp/circuits.h"
 
 namespace tp {
+  void Circuit::_DummyPrep(FF lambda) {
+    for (auto input_gate : mInputGates) {
+      input_gate->SetLambda(lambda);
+    }
+    for (std::size_t layer = 0; layer < GetDepth(); layer++) {
+      for (auto mult_gate : mFlatMultLayers[layer]) {
+	mult_gate->SetDummyLambda(lambda);
+      }
+    }
+    for (auto output_gate : mOutputGates) {
+      output_gate->GetDummyLambda(); //populate outputs and add wires
+    }
+
+    // Now update packed sharings
+    for (auto input_layer : mInputLayers) {
+      for (auto input_batch : input_layer.mBatches) {
+	Vec lambda_A;
+	lambda_A.Reserve(mBatchSize);
+	for (std::size_t i = 0; i < mBatchSize; i++) {
+	  lambda_A.Emplace(input_batch->GetInputGate(i)->GetDummyLambda());
+	}
+	scl::PRG prg;
+	auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	Vec new_shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+	input_batch->SetPreprocessing(new_shares[mID]);
+      }
+    }
+    for (auto output_layer : mOutputLayers) {
+      for (auto output_batch : output_layer.mBatches) {
+	Vec lambda_A;
+	lambda_A.Reserve(mBatchSize);
+	for (std::size_t i = 0; i < mBatchSize; i++) {
+	  lambda_A.Emplace(output_batch->GetOutputGate(i)->GetDummyLambda());
+	}
+	scl::PRG prg;
+	auto poly = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	Vec new_shares = scl::details::SharesFromEvPoly(poly, mParties);
+
+	output_batch->SetPreprocessing(new_shares[mID]);
+      }
+    }
+    // Mults
+    for (auto mult_layer : mMultLayers) {
+      for (auto mult_batch : mult_layer.mBatches) {
+	Vec lambda_A;
+	Vec lambda_B;
+	Vec lambda_C;
+	lambda_A.Reserve(mBatchSize);
+	lambda_B.Reserve(mBatchSize);
+	lambda_C.Reserve(mBatchSize);
+	for (std::size_t i = 0; i < mBatchSize; i++) {
+	  lambda_A.Emplace(mult_batch->GetMultGate(i)->GetLeft()->GetDummyLambda());
+	  lambda_B.Emplace(mult_batch->GetMultGate(i)->GetRight()->GetDummyLambda());
+	  lambda_C.Emplace(mult_batch->GetMultGate(i)->GetDummyLambda());
+	}
+	scl::PRG prg;
+	auto poly_A = scl::details::EvPolyFromSecretsAndDegree(lambda_A, mBatchSize-1, prg);
+	auto poly_B = scl::details::EvPolyFromSecretsAndDegree(lambda_B, mBatchSize-1, prg);
+	auto poly_C = scl::details::EvPolyFromSecretsAndDegree(lambda_C, mBatchSize-1, prg);
+	Vec new_shares_A = scl::details::SharesFromEvPoly(poly_A, mParties);
+	Vec new_shares_B = scl::details::SharesFromEvPoly(poly_B, mParties);
+	Vec new_shares_C = scl::details::SharesFromEvPoly(poly_C, mParties);
+
+	mult_batch->SetPreprocessing(new_shares_A[mID], new_shares_B[mID], \
+				     new_shares_A[mID] * new_shares_B[mID] - new_shares_C[mID]);
+      }
+    }
+      
+      
+  }
+
     // Populates each batch with dummy preprocessing (all zeros)
   void Circuit::_DummyPrep() {
       for (auto input_layer : mInputLayers) input_layer._DummyPrep();

@@ -1,6 +1,6 @@
 # Turbo-Packing
 
-This is the code for the passively secure protocol presented in the paper "Majority MPC with Constant Online Communication".
+This is the code for the passively secure protocol presented in the paper "Honest Majority MPC with Constant Online Communication".
 
 ## Requirements
 
