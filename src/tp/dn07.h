@@ -1,7 +1,6 @@
 #ifndef DN07_H
 #define DN07_H
 
-#include <catch2/catch.hpp>
 #include <iostream>
 #include <map>
 #include <assert.h>

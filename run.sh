@@ -22,10 +22,10 @@ logdir="logs/logs_${logext}_${n}_${s}_${d}_${tag}"
 
 mkdir -p $logdir
 
-( ./build/exp_comp.x $n 0 $s $d | tee "${logdir}/party_0.log" ) &
+( ./build/ours.x $n 0 $s $d | tee "${logdir}/party_0.log" ) &
 
 for i in $(seq 1 $(($n - 1))); do
-    ( ./build/exp_comp.x $n $i $s $d &>"${logdir}/party_${i}.log" ) &
+    ( ./build/ours.x $n $i $s $d &>"${logdir}/party_${i}.log" ) &
     pid=$!
 done
 echo

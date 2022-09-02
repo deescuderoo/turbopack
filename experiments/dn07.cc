@@ -103,6 +103,14 @@ int main(int argc, char** argv) {
 
   STOP_TIMER(dn07_prep);
 
+  DELIM;
+  std::cout << "DN07: Running FD\n";
+
+  START_TIMER(dn07_fd);
+  dn07.FDMapPrepToGates();
+  dn07.FDMultPartiesSendP1();
+  dn07.FDMultP1Receives();
+  STOP_TIMER(dn07_fd);
 
   std::vector<tp::FF> result;
   if (id == 0){

@@ -98,8 +98,8 @@ namespace tp {
 	    shr += mVandermonde[j][shr_idx] * recv_shares[j];
 	  }
 	  if (ctr < mNMultBatches) mUnpackedShrsA[pack_idx].emplace_back(shr);
-	  if (mNMultBatches <= ctr < 2*mNMultBatches) mUnpackedShrsB[pack_idx].emplace_back(shr);
-	  if (2*mNMultBatches <= ctr < 3*mNMultBatches) mUnpackedShrsMask[pack_idx].emplace_back(shr);
+	  if ( (mNMultBatches <= ctr) && (ctr < 2*mNMultBatches) ) mUnpackedShrsB[pack_idx].emplace_back(shr);
+	  if ( (2*mNMultBatches <= ctr) && (ctr < 3*mNMultBatches) ) mUnpackedShrsMask[pack_idx].emplace_back(shr);
 	  ctr++;
 	}
       }

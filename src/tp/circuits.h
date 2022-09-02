@@ -1,7 +1,6 @@
 #ifndef CIRCUIT_H
 #define CIRCUIT_H
 
-#include <catch2/catch.hpp>
 #include <iostream>
 #include <assert.h>
 

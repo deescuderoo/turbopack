@@ -1,7 +1,6 @@
 #ifndef CORRELATOR_H
 #define CORRELATOR_H
 
-#include <catch2/catch.hpp>
 #include <iostream>
 #include <map>
 #include <assert.h>
