@@ -177,7 +177,7 @@ namespace tp {
 	    mCircuit.mNetwork->Party(i)->Recv(shr);
 	    shares_from_last.Emplace(shr);
 	  }
-	  mMapP1SharesFromLast[mult_gate] = shares_from_last;
+	  mMapP1SharesFromLast.push(shares_from_last);
 	}
       }
     }
@@ -281,7 +281,8 @@ namespace tp {
 	}
 
 	// Shares received from the last t parties in the FD phase
-	Vec shares_from_last = mMapP1SharesFromLast[mult_gate];
+	Vec shares_from_last = mMapP1SharesFromLast.front();
+	mMapP1SharesFromLast.pop();
 
 	for (std::size_t i = mThreshold+1; i < mParties; ++i) {
 	  shares.Emplace(shares_from_last[i-(mThreshold+1)]);
@@ -332,7 +333,7 @@ namespace tp {
 	// Compute share
 	FF share = masked + mDShrs[ mMapMults[mult_gate] ].shr;
 
-	// Update map of shares
+	// Set share
 	mult_gate->SetDn07Share(share);
       }
     }

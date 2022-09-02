@@ -135,7 +135,7 @@ namespace tp {
     std::vector<std::vector<FF>> mVandermonde; // mParties x (mThreshold + 1)
 
     std::queue<Vec> mP1SharesToSend; 
-    std::map<std::shared_ptr<MultGate>, Vec> mMapP1SharesFromLast;
+    std::queue<Vec> mMapP1SharesFromLast; 
   };
 
 } // namespace tp
