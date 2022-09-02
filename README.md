@@ -48,7 +48,7 @@ This creates two executables in the main directory: `ours.x` and `dn07.x`, which
 
 **Note:** Tests can be compiled and run by changing `Release` to `Debug` above.
 This creates an executable in the `build` directory called `tests.x` which can be run as `./tests.x` to execute all tests, or you can also run `./tests.x -h` to see more testing options (this comes from Catch2).
-The directory with the tests is `test\`.
+The directory with the tests is `test/`.
 
 ## Running
 

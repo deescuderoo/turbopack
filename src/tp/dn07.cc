@@ -153,8 +153,28 @@ namespace tp {
 	// Input owner masks and sends
 	FF input = input_gate->GetValue();
 	FF masked = input - mask;
-	for ( std::size_t i = 0; i < mParties; i++ ) {
-	  mCircuit.mNetwork->Party(i)->Send(masked);
+
+	// Instead of sending 'masked' directly, client will send
+	// shares of degree t where the last t shares are zero
+	Vec y_points;
+	y_points.Reserve(mThreshold+1);
+	y_points.Emplace(masked);
+	// Set the shares of the last t parties to 0
+	for (std::size_t i = mParties-mThreshold; i < mParties; ++i) y_points.Emplace(FF(0));
+	Vec x_points;
+	x_points.Reserve(mThreshold+1);
+
+	// Secret position
+	x_points.Emplace(FF(0));
+	// Positions set to zero
+	for (std::size_t i = mParties-mThreshold; i < mParties; ++i) x_points.Emplace(FF(i+1));
+	// Interpolate polynomial
+	auto poly = scl::details::EvPolynomial<FF>(x_points, y_points);
+	// Compute remaining shares (only t+1 are needed)
+	auto shares_to_send = scl::details::SharesFromEvPoly(poly, mThreshold+1);
+	
+	for ( std::size_t i = 0; i < mThreshold+1; i++ ) {
+	  mCircuit.mNetwork->Party(i)->Send(shares_to_send[i]);
 	}
       }
     }
@@ -163,12 +183,16 @@ namespace tp {
   void DN07::InputPartiesReceive() {
     for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
       for (auto input_gate : mCircuit.mFlatInputGates[owner_id]) {
-	// Parties receive
-	FF masked;
-	mCircuit.mNetwork->Party(owner_id)->Recv(masked);
+	FF share_of_masked;
+	if (mCircuit.mID < mThreshold+1) {
+	  // Parties receive
+	  mCircuit.mNetwork->Party(owner_id)->Recv(share_of_masked);
+	} else {
+	  share_of_masked = FF(0);
+	}
 
 	// Compute share
-	FF share = masked + mRShrs[ mMapInputs[input_gate] ].shr;
+	FF share = share_of_masked + mRShrs[ mMapInputs[input_gate] ].shr;
 
 	// Update map of shares
 	input_gate->SetDn07Share(share);
@@ -204,15 +228,20 @@ namespace tp {
 	Vec y_points;
 	y_points.Reserve(mThreshold+1);
 	y_points.Emplace(secret);
-	for (std::size_t i = 1; i < mThreshold+1; ++i) y_points.Emplace(FF(0));
+	// Set the shares of the last t parties to 0
+	for (std::size_t i = mParties-mThreshold; i < mParties; ++i) y_points.Emplace(FF(0));
 
 	Vec x_points;
 	x_points.Reserve(mThreshold+1);
 
-	for (std::size_t i = 0; i < mThreshold+1; ++i) x_points.Emplace(FF(i));
-
+	// Secret position
+	x_points.Emplace(FF(0));
+	// Positions set to zero
+	for (std::size_t i = mParties-mThreshold; i < mParties; ++i) x_points.Emplace(FF(i+1));
+	// Interpolate polynomial
 	auto poly = scl::details::EvPolynomial<FF>(x_points, y_points);
-	auto shares_to_send = scl::details::SharesFromEvPoly(poly, mParties);
+	// Compute remaining shares (only t+1 are needed)
+	auto shares_to_send = scl::details::SharesFromEvPoly(poly, mThreshold+1);
 	mP1SharesToSend.push(shares_to_send);
       }
     }
@@ -220,7 +249,7 @@ namespace tp {
   void DN07::MultP1SendsParties(std::size_t layer) {
     if (mCircuit.mID == 0) {
       for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
-	for ( std::size_t i = mThreshold; i < mCircuit.mParties; i++ ) {
+	for ( std::size_t i = 0; i < mThreshold+1; i++ ) {
 	  mCircuit.mNetwork->Party(i)->Send(mP1SharesToSend.front()[i]);
 	}
 	mP1SharesToSend.pop();
@@ -230,7 +259,7 @@ namespace tp {
 
   void DN07::MultPartiesReceive(std::size_t layer) {
     for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
-      if (mCircuit.mID >= mThreshold) {
+      if (mCircuit.mID < mThreshold+1) {
 	FF masked;
 	mCircuit.mNetwork->Party(0)->Recv(masked);
 	
