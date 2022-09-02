@@ -1,0 +1,14 @@
+0.3
+ * Support a simple form of network discovery, which simplifies setup.
+
+0.2
+ * Support for working with a network, both local and remote.
+
+0.1
+ * Finite fields, Rings modulo a power of 2
+ * Matrices, vectors
+ * Additive secret sharing, Shamir's secret sharing
+ * 256, 384 and 512 bit hash
+ * AES-CTR based PRG
+ * Installation instructions, examples, documentation, improved build
+   environment
