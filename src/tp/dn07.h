@@ -64,17 +64,16 @@ namespace tp {
 
     // OFFLINE PHASE
     void PrepPartiesSend();
-
     void PrepPartiesReceive();
 
-
-
-    // ONLINE PHASE
-
-    void InputPartiesSendOwners();
+    // FD OFFLINE
+    void FDMapPrepToGates();
+    void FDMultPartiesSendP1();
+    void FDMultP1Receives();
     
+    // ONLINE PHASE
+    void InputPartiesSendOwners();
     void InputOwnersReceiveAndSendParties();
-
     void InputPartiesReceive();
 
     void MultPartiesSendP1(std::size_t layer);
@@ -136,6 +135,7 @@ namespace tp {
     std::vector<std::vector<FF>> mVandermonde; // mParties x (mThreshold + 1)
 
     std::queue<Vec> mP1SharesToSend; 
+    std::queue<Vec> mP1SharesFromLastParties; 
   };
 
 } // namespace tp

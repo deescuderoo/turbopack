@@ -60,6 +60,11 @@ TEST_CASE("DN07: Dummy FD") {
     // DUMMY PREP
     PARTY { dn07es[i].DummyPrep(prep); }
 
+    // FD PREP
+    PARTY { dn07es[i].FDMapPrepToGates(); }
+    PARTY { dn07es[i].FDMultPartiesSendP1(); }
+    PARTY { dn07es[i].FDMultP1Receives(); }
+
     // SET INPUTS
     tp::FF X(21321);
     tp::FF Y(-3421);
@@ -129,6 +134,12 @@ TEST_CASE("DN07: Dummy FD") {
     // DUMMY PREP
     PARTY { dn07es[i].DummyPrep(prep); }
 
+    // FD PREP
+    PARTY { dn07es[i].FDMapPrepToGates(); }
+    PARTY { dn07es[i].FDMultPartiesSendP1(); }
+    PARTY { dn07es[i].FDMultP1Receives(); }
+
+    // Set inputs
     std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
     dn07es[0].GetCircuit().SetClearInputsFlat(inputs);
     auto result = dn07es[0].GetCircuit().GetClearOutputsFlat();
@@ -210,6 +221,11 @@ TEST_CASE("DN07: Real Prep") {
     PARTY { dn07es[i].PrepPartiesSend(); }
     PARTY { dn07es[i].PrepPartiesReceive(); }
 
+    // FD PREP
+    PARTY { dn07es[i].FDMapPrepToGates(); }
+    PARTY { dn07es[i].FDMultPartiesSendP1(); }
+    PARTY { dn07es[i].FDMultP1Receives(); }
+
     // SET INPUTS
     tp::FF X(12);
     tp::FF Y(24);
@@ -280,6 +296,12 @@ TEST_CASE("DN07: Real Prep") {
     PARTY { dn07es[i].PrepPartiesSend(); }
     PARTY { dn07es[i].PrepPartiesReceive(); }
 
+    // FD PREP
+    PARTY { dn07es[i].FDMapPrepToGates(); }
+    PARTY { dn07es[i].FDMultPartiesSendP1(); }
+    PARTY { dn07es[i].FDMultP1Receives(); }
+
+    // Set inputs
     std::vector<tp::FF> inputs{tp::FF(0432432), tp::FF(54982)};
     dn07es[0].GetCircuit().SetClearInputsFlat(inputs);
     auto result = dn07es[0].GetCircuit().GetClearOutputsFlat();

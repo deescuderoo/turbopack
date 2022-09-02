@@ -122,6 +122,66 @@ namespace tp {
   }
 
 
+  // FD OFFLINE
+  void DN07::FDMapPrepToGates() {
+    // First map preprocessing to input gates
+    for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
+      for (auto input_gate : mCircuit.mFlatInputGates[owner_id]) {
+	// Update map
+	mMapInputs[input_gate] = mCTRRandShrs++;
+      }
+    }
+
+    // Then map double sharings to multiplication gates
+    for (std::size_t layer = 0; layer < mCircuit.GetDepth(); layer++) {
+      for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
+	// Update map
+	mMapMults[mult_gate] = mCTRDoubleShrs++;
+      }
+    }
+  }
+
+  void DN07::FDMultPartiesSendP1() {
+    // // The last t parties set their shares of the input gates
+    // if (mCircuit.mID >= mThreshold+1) {
+    //   for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
+    // 	for (auto input_gate : mCircuit.mFlatInputGates[owner_id]) {
+    // 	  FF share = mRShrs[ mMapInputs[input_gate] ].shr;
+    // 	  input_gate->SetDn07Share(share);
+    // 	}
+    //   }
+
+    //   for (std::size_t layer = 0; layer < mCircuit.GetDepth(); layer++) {
+    // 	for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
+    // 	  // The last t parties send their shares to P1
+    // 	  FF shr = mult_gate->GetLeft()->GetDn07Share() * mult_gate->GetRight()->GetDn07Share() 	    - mDShrs[mCTRDoubleShrs].dshr;
+
+    // 	  mCircuit.mNetwork->Party(0)->Send(shr);
+
+    // 	  // The last t parties set their shares of the mult gates
+    // 	  FF share = mDShrs[ mMapMults[mult_gate] ].shr;
+    // 	  mult_gate->SetDn07Share(share);
+    // 	}
+    //   }
+    // }
+  }
+
+  void DN07::FDMultP1Receives() {
+    // if (mCircuit.mID == 0) {
+    //   for (std::size_t layer = 0; layer < mCircuit.GetDepth(); layer++) {
+    // 	for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
+    // 	  Vec shares_from_last;
+    // 	  shares_from_last.Reserve(mThreshold);
+    // 	  for (std::size_t i = mThreshold+1; i < mParties; ++i) {
+    // 	    FF shr;
+    // 	    mCircuit.mNetwork->Party(i)->Recv(shr);
+    // 	    shares_from_last.Emplace(shr);
+    // 	  }
+    // 	  mP1SharesFromLastParties.push(shares_from_last);
+    // 	}
+    //   }
+    // }
+  }
 
   // ONLINE PHASE
 
@@ -129,10 +189,8 @@ namespace tp {
     for (std::size_t owner_id = 0; owner_id < mCircuit.mClients; owner_id++) {
       for (auto input_gate : mCircuit.mFlatInputGates[owner_id]) {
 	if ( mCircuit.mID < mThreshold + 1 ) { // Only P1 .. Pt+1 are needed
-	  mCircuit.mNetwork->Party(owner_id)->Send(mRShrs[mCTRRandShrs].shr);
+	  mCircuit.mNetwork->Party(owner_id)->Send(mRShrs[ mMapInputs[input_gate] ].shr);
 	}
-	// Update map
-	mMapInputs[input_gate] = mCTRRandShrs++;
       }
     }
   }
@@ -204,12 +262,9 @@ namespace tp {
     for (auto mult_gate : mCircuit.mFlatMultLayers[layer]) {
       // Send masked shares to P1
       FF shr = mult_gate->GetLeft()->GetDn07Share() * mult_gate->GetRight()->GetDn07Share() \
-	- mDShrs[mCTRDoubleShrs].dshr;
+	- mDShrs[ mMapMults[mult_gate] ].dshr;
 
       mCircuit.mNetwork->Party(0)->Send(shr);
-
-      // Update map
-      mMapMults[mult_gate] = mCTRDoubleShrs++;
     }
   }
 
