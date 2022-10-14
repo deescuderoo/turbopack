@@ -5,18 +5,13 @@ entries = os.scandir('logs/')
 
 logs_dir = "logs"
 
-n = 13
-s = 1000
-d = 10
-num_it = 1
-
 dec = 2
 rat = 2
 
 d_max = 1
 s_max = 6
 n_values = [5, 13, 21, 29, 37]
-# n_values = [29, 37, 45, 53, 61]
+#n_values = [37, 45, 53, 61, 69, 77]
 assert d_max < s_max
 
 d_set = [10**i for i in range(0, d_max+1)]
@@ -40,12 +35,13 @@ def parse(n, s, d):
     filename = logs_dir + f"/logs_experiment_{n}_{s}_{d}_0/party_0.log"
     flag = os.path.exists(filename)
     if (not flag):
-        return [0, 0, 0, 1, 1]
+        return [0, 0, 0, 1, 1, 1]
 
     fi_prep = 0
     fd_prep = 0
     online = 0
     dn07_prep = 0
+    dn07_fd = 0
     dn07_online = 0
 
     it = 0
@@ -59,27 +55,36 @@ def parse(n, s, d):
 
         for line in file:
             if line.startswith("fi_prep:"):
-                fi_prep += int(''.join(filter(str.isdigit, line)))
+                fi_prep += int(line.split()[1])
+                # fi_prep += int(''.join(filter(str.isdigit, line)))
             if line.startswith("fd_prep:"):
-                fd_prep += int(''.join(filter(str.isdigit, line)))
+                print("fd_prep", line)
+                fd_prep += int(line.split()[1])
             if line.startswith("online:"):
-                online += int(''.join(filter(str.isdigit, line)))
-            if line.startswith("atlas_prep:"):
-                dn07_prep += int(''.join(filter(str.isdigit, line)))
-            if line.startswith("atlas_online:"):
-                dn07_online += int(''.join(filter(str.isdigit, line)))
+                print("online", line)
+                online += int(line.split()[1])
+            if line.startswith("dn07_prep:"):
+                print("dn07_prep", line)
+                dn07_prep += int(line.split()[1])
+            if line.startswith("dn07_fd:"):
+                print("dn07_fd", line)
+                dn07_fd += int(line.split()[1])
+            if line.startswith("dn07_online:"):
+                print("dn07_fd", line)
+                dn07_online += int(line.split()[1])
 
     fi_prep = fi_prep/it
     fd_prep = fd_prep/it
     online = online/it
     dn07_prep = dn07_prep/it
+    dn07_fd = dn07_fd/it
     dn07_online = dn07_online/it
 
     print(f"Parsed n={n}, s={s}, d={d}, num_it={it}")
 
-    return [fi_prep / 10**6, fd_prep / 10**6, online / 10**6, dn07_prep / 10**6, dn07_online / 10**6]
+    return [fi_prep / 10**6, fd_prep / 10**6, online / 10**6, dn07_prep / 10**6, dn07_fd / 10**6, dn07_online / 10**6]
 
-l = parse(n, s, d)
+# l = parse(n, s, d)
 
 res = {}
 fd = {}
@@ -96,13 +101,15 @@ for d in d_set:
             on_fd = res[2]
             off_fi = res[0]
             on_fi = res[1] + res[2]
-            off_dn07 = res[3]
-            on_dn07 = res[4]
+            off_dn07_fd = res[3] + res[4]
+            on_dn07_fd = res[5]
+            off_dn07_fi = res[3]
+            on_dn07_fi = res[4] + res[5]
 
-            ratio_off_fd = off_fd / off_dn07
-            ratio_on_fd = on_fd / on_dn07
-            ratio_off_fi = off_fi / off_dn07
-            ratio_on_fi = on_fi / on_dn07
+            ratio_off_fd = off_fd / off_dn07_fd
+            ratio_on_fd = on_fd / on_dn07_fd
+            ratio_off_fi = off_fi / off_dn07_fi
+            ratio_on_fi = on_fi / on_dn07_fi
 
             fd[(s, d)] += f" & {off_fd:.{dec}f} / {on_fd:.{dec}f} & " + "\\textbf{" + f"{ratio_off_fd:.{rat}f} / {ratio_on_fd:.{rat}f}" + "}"
             fi[(s, d)] += f" & {off_fi:.{dec}f} / {on_fi:.{dec}f} & " + "\\textbf{" + f"{ratio_off_fi:.{rat}f} / {ratio_on_fi:.{rat}f}" + "}"
